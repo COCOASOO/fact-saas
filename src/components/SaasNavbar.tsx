@@ -1,67 +1,90 @@
-"use client";
+"use client"
 
-import { useEffect, useState } from "react";
-import { createClient } from "@/app/lib/supabase/supabaseClient";
-import Link from "next/link";
-import { User } from "@supabase/supabase-js";
+import { useEffect, useState } from "react"
+import Link from "next/link"
+import { LogOut } from 'lucide-react'
+import { User } from "@supabase/supabase-js"
 
-export default function SaasNavbar() {
-  const [user, setUser] = useState<User | null>(null);
-  const supabase = createClient();
+import { createClient } from "@/app/lib/supabase/supabaseClient"
+import { Button } from "@/components/ui/button"
+import { Separator } from "@/components/ui/separator"
+
+export function SaasNavbar() {
+  const [user, setUser] = useState<User | null>(null)
+  const supabase = createClient()
 
   useEffect(() => {
     async function getUser() {
-      const { data, error } = await supabase.auth.getUser();
-      if (error) console.error("Error al obtener el usuario:", error.message);
-      if (data.user) setUser(data.user);
+      const { data, error } = await supabase.auth.getUser()
+      if (error) console.error("Error al obtener el usuario:", error.message)
+      if (data.user) setUser(data.user)
     }
-    getUser();
-  }, []);
+    getUser()
+  }, [])
 
   const handleLogout = async () => {
-    await supabase.auth.signOut();
-    window.location.href = "/auth/login";
-  };
+    await supabase.auth.signOut()
+    window.location.href = "/pages/auth/login"
+  }
+
+  if (!user) {
+    return (
+      <div className="flex flex-1 items-center justify-between">
+        <nav className="flex items-center gap-4">
+          <Link href="/" className="text-sm font-medium text-primary">
+            Mi App
+          </Link>
+          <Separator orientation="vertical" className="h-4" />
+          <Link
+            href="/"
+            className="text-sm text-muted-foreground hover:text-primary"
+          >
+            Inicio
+          </Link>
+        </nav>
+        <div className="flex items-center gap-2">
+          <Button asChild variant="outline" size="sm">
+            <Link href="/pages/auth/register">Registrarse</Link>
+          </Button>
+          <Button asChild size="sm">
+            <Link href="/pages/auth/login">Iniciar Sesión</Link>
+          </Button>
+        </div>
+      </div>
+    )
+  }
 
   return (
-    <header className="bg-white p-4 shadow flex justify-between items-center">
-      {/* Logo */}
-      <Link href="/" className="text-lg font-bold text-blue-600">
-        Mi App
-      </Link>
-
-      {/* Navegación */}
-      <nav className="flex gap-6">
-        <Link href="/" className="text-gray-600 hover:text-blue-600">
+    <div className="flex flex-1 items-center justify-between">
+      <nav className="flex items-center gap-4">
+        <Link href="/" className="text-sm font-medium text-primary">
+          Mi App
+        </Link>
+        <Separator orientation="vertical" className="h-4" />
+        <Link
+          href="/"
+          className="text-sm text-muted-foreground hover:text-primary"
+        >
           Inicio
         </Link>
-        {user && (
-          <Link href="/pages/dashboard" className="text-gray-600 hover:text-blue-600">
-            Dashboard
-          </Link>
-        )}
+        <Link
+          href="/pages/dashboard"
+          className="text-sm text-muted-foreground hover:text-primary"
+        >
+          Dashboard
+        </Link>
+        <Separator orientation="vertical" className="h-4" />
+        <span className="text-sm text-muted-foreground">{user.email}</span>
       </nav>
-
-      {/* Autenticación */}
-      <div>
-        {user ? (
-          <div className="flex items-center gap-4">
-            <span className="text-gray-700">{user.email}</span>
-            <button onClick={handleLogout} className="bg-red-500 px-3 py-1 text-white rounded">
-              Cerrar Sesión
-            </button>
-          </div>
-        ) : (
-          <div className="flex gap-4">
-            <Link href="/auth/login" className="bg-blue-500 px-4 py-2 text-white rounded">
-              Iniciar Sesión
-            </Link>
-            <Link href="/auth/register" className="border border-blue-500 px-4 py-2 text-blue-500 rounded">
-              Registrarse
-            </Link>
-          </div>
-        )}
-      </div>
-    </header>
-  );
+      <Button
+        variant="destructive"
+        size="sm"
+        className="gap-2"
+        onClick={handleLogout}
+      >
+        <LogOut className="h-4 w-4" />
+        Cerrar Sesión
+      </Button>
+    </div>
+  )
 }

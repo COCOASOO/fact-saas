@@ -3,44 +3,50 @@
 import * as React from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { BarChart3, ChevronLeft, ChevronRight, FileText, Settings, Users } from "lucide-react"
+import { ChevronLeft, ChevronRight, FileText, LayoutDashboard, Settings, Users } from 'lucide-react'
 
-import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
+import { ScrollArea } from "@/components/ui/scroll-area"
+import { Sheet, SheetContent } from "@/components/ui/sheet"
+import { cn } from "@/lib/utils"
 
 interface NavItem {
-  title: string
   href: string
-  icon: React.ComponentType<{ className?: string }>
+  icon: React.ElementType
+  label: string
 }
 
 const navItems: NavItem[] = [
   {
-    title: "Dashboard",
-    href: "/dashboard",
-    icon: BarChart3,
+    href: "/pages/dashboard",
+    icon: LayoutDashboard,
+    label: "Dashboard",
   },
   {
-    title: "Facturas",
-    href: "/dashboard/invoices",
+    href: "/pages/dashboard/invoices",
     icon: FileText,
+    label: "Facturas",
   },
   {
-    title: "Clientes",
-    href: "/dashboard/clients",
+    href: "/pages/dashboard/clients",
     icon: Users,
+    label: "Clientes",
   },
   {
-    title: "Configuración",
-    href: "/dashboard/settings",
+    href: "/pages/dashboard/settings",
     icon: Settings,
+    label: "Configuración",
   },
 ]
 
-export function Sidebar() {
-  const pathname = usePathname()
+interface SidebarProps {
+  className?: string
+  onToggle?: (expanded: boolean) => void
+}
+
+export function Sidebar({ className, onToggle }: SidebarProps) {
   const [isExpanded, setIsExpanded] = React.useState(true)
+  const pathname = usePathname()
 
   React.useEffect(() => {
     const stored = localStorage.getItem("sidebarExpanded")
@@ -53,53 +59,102 @@ export function Sidebar() {
     const newState = !isExpanded
     setIsExpanded(newState)
     localStorage.setItem("sidebarExpanded", String(newState))
+    onToggle?.(newState)
   }
 
   return (
-    <aside
+    <nav
       className={cn(
-        "fixed inset-y-0 left-0 z-50 hidden border-r bg-background transition-all duration-300 ease-in-out lg:flex lg:flex-col",
+        "fixed inset-y-0 left-0 z-50 hidden h-screen border-r bg-background transition-all duration-300 ease-in-out lg:block",
         isExpanded ? "w-64" : "w-16",
+        className
       )}
     >
-      <div className="flex flex-col gap-4 p-4">
-        <div className="flex h-12 items-center justify-between">
-          {isExpanded && <h2 className="text-lg font-semibold">Facturación</h2>}
-          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={toggleSidebar}>
+      <div className="flex h-full flex-col gap-4">
+        <div className="flex h-16 items-center justify-between border-b px-4">
+          {isExpanded && (
+            <div className="flex items-center gap-2">
+              <FileText className="h-6 w-6" />
+              <span className="font-semibold">Facturación</span>
+            </div>
+          )}
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8"
+            onClick={toggleSidebar}
+          >
             {isExpanded ? <ChevronLeft /> : <ChevronRight />}
-            <span className="sr-only">{isExpanded ? "Collapse Sidebar" : "Expand Sidebar"}</span>
+            <span className="sr-only">Toggle Sidebar</span>
           </Button>
         </div>
-        <TooltipProvider delayDuration={0}>
-          <nav className="flex-1 space-y-1">
-            {navItems.map((item) => {
-              const isActive = pathname === item.href
-              return (
-                <Tooltip key={item.href}>
-                  <TooltipTrigger asChild>
-                    <Button
-                      asChild
-                      variant={isActive ? "secondary" : "ghost"}
-                      className={cn(
-                        "w-full justify-start gap-2",
-                        isActive && "bg-secondary",
-                        !isExpanded && "justify-center px-2",
-                      )}
-                    >
-                      <Link href={item.href}>
-                        <item.icon className="h-4 w-4" />
-                        {isExpanded && <span>{item.title}</span>}
-                      </Link>
-                    </Button>
-                  </TooltipTrigger>
-                  {!isExpanded && <TooltipContent side="right">{item.title}</TooltipContent>}
-                </Tooltip>
-              )
-            })}
-          </nav>
-        </TooltipProvider>
+        <ScrollArea className="flex-1 px-3">
+          <div className="flex flex-col gap-2">
+            {navItems.map((item) => (
+              <Link
+                key={item.href}
+                href={item.href}
+                className={cn(
+                  "flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-all hover:bg-accent hover:text-accent-foreground",
+                  pathname === item.href && "bg-muted font-medium",
+                  !isExpanded && "justify-center"
+                )}
+              >
+                <item.icon className="h-4 w-4" />
+                {isExpanded && <span>{item.label}</span>}
+                {!isExpanded && <span className="sr-only">{item.label}</span>}
+              </Link>
+            ))}
+          </div>
+        </ScrollArea>
       </div>
-    </aside>
+    </nav>
   )
 }
 
+export function MobileSidebar() {
+  const [open, setOpen] = React.useState(false)
+  const pathname = usePathname()
+
+  return (
+    <Sheet open={open} onOpenChange={setOpen}>
+      <Button
+        variant="ghost"
+        size="icon"
+        className="mr-2 lg:hidden"
+        onClick={() => setOpen(true)}
+      >
+        <ChevronRight className="h-6 w-6" />
+        <span className="sr-only">Open Sidebar</span>
+      </Button>
+      <SheetContent side="left" className="w-64 p-0">
+        <div className="flex h-full flex-col gap-4">
+          <div className="flex h-16 items-center border-b px-6">
+            <div className="flex items-center gap-2">
+              <FileText className="h-6 w-6" />
+              <span className="font-semibold">Facturación</span>
+            </div>
+          </div>
+          <ScrollArea className="flex-1 px-3">
+            <div className="flex flex-col gap-2">
+              {navItems.map((item) => (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  onClick={() => setOpen(false)}
+                  className={cn(
+                    "flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-all hover:bg-accent hover:text-accent-foreground",
+                    pathname === item.href && "bg-muted font-medium"
+                  )}
+                >
+                  <item.icon className="h-4 w-4" />
+                  <span>{item.label}</span>
+                </Link>
+              ))}
+            </div>
+          </ScrollArea>
+        </div>
+      </SheetContent>
+    </Sheet>
+  )
+}
