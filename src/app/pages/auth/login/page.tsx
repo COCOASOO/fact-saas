@@ -29,13 +29,13 @@ export default function LoginPage() {
     if (error) {
       setError(error.message);
     } else {
-      router.push("/dashboard");
+      router.push("/pages/dashboard");
     }
   };
 
   return (
     <div className="min-h-screen flex flex-col lg:flex-row">
-      <div className="hidden lg:flex lg:w-1/2 relative bg-gradient-to-br from-blue-600 via-blue-800 to-blue-900 flex items-center justify-center text-white p-12">
+      <div className="hidden lg:flex lg:w-1/2 relative bg-gradient-to-br from-blue-600 via-blue-800 to-blue-900 items-center justify-center text-white p-12">
         <div>
           <h2 className="text-xl font-semibold tracking-tight">Acme Inc</h2>
           <p className="text-sm text-white/70">Enterprise Solutions</p>
@@ -113,7 +113,7 @@ export default function LoginPage() {
 
             <p className="text-center text-sm text-gray-500">
               Don't have an account? {" "}
-              <Link href="/auth/signup" className="font-medium text-blue-600 hover:text-blue-500">
+              <Link href="/pages/auth/signup" className="font-medium text-blue-600 hover:text-blue-500">
                 Sign up
               </Link>
             </p>
