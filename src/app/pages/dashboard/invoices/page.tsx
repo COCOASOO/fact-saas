@@ -59,40 +59,50 @@ export default function InvoicesPage() {
     setFilteredClients(clients.filter(client => client.name.toLowerCase().includes(query)));
   };
 
-  const handleCreateInvoice = async (e: React.FormEvent) => {
+  const handleCreateInvoice = async (e: { preventDefault: () => void }) => {
     e.preventDefault();
-    const { data, error } = await supabase.auth.getUser();
-    if (error || !data.user) {
-      console.error("Error al obtener usuario:", error?.message);
+    const { data: authData, error: authError } = await supabase.auth.getUser();
+  
+    if (authError || !authData.user) {
+      console.error("Error al obtener usuario autenticado:", authError?.message);
       return;
     }
-
-    if (!clientId) {
-      alert("Por favor, selecciona un cliente válido.");
+  
+    // 1️⃣ Obtener el auth_uuid del usuario autenticado
+    const authUuid = authData.user.id;
+  
+    // 2️⃣ Buscar el ID real en la tabla users
+    const userData = await getUserByAuthUuid(authUuid);
+  
+    if (!userData || !userData.id) {
+      console.error("Error: No se encontró el usuario en la tabla users.");
       return;
     }
-
+  
     try {
+      // 3️⃣ Insertar la factura usando el ID real del usuario
       await addInvoice({
-        user_id: data.user.id,
+        user_id: userData.id, // <-- Ahora usamos el ID correcto
         client_id: clientId,
         date: new Date().toISOString(),
         invoice_number: `INV-${Math.floor(Math.random() * 10000)}`,
         amount: parseFloat(amount),
         status: "Pendiente",
       });
-
+  
       setModalOpen(false);
       setClientId("");
       setAmount("");
-
-      const userInvoices = await getInvoices(data.user.id);
+  
+      // Refrescar facturas
+      const userInvoices = await getInvoices(userData.id);
       setInvoices(userInvoices);
     } catch (error) {
       console.error("Error al crear la factura:", (error as Error).message);
       alert("Error al crear la factura: " + (error as Error).message);
     }
   };
+  
 
   return (
     <div>
