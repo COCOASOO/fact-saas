@@ -3,8 +3,8 @@ import { FileText } from "lucide-react"
 
 export default function Footer() {
   return (
-    <footer className="border-t bg-background">
-      <div className="container flex flex-col gap-8 py-8 md:py-12">
+    <footer className="mx-auto border-t bg-background">
+      <div className=" flex flex-col gap-8 py-8 md:py-12">
         <div className="flex flex-col gap-6 md:flex-row md:justify-between">
           <div className="space-y-4">
             <Link href="/" className="flex items-center space-x-2">

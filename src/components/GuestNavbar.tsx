@@ -44,7 +44,7 @@ export default function GuestNavbar() {
         isScrolled ? "bg-white/80 backdrop-blur-md border-b" : "bg-white",
       )}
     >
-      <div className="container flex h-16 items-center justify-between">
+      <div className=" flex h-16 items-center justify-between p-5">
         <Link href="/" className="flex items-center space-x-2">
           <FileText className="h-6 w-6 text-primary" />
           <span className="text-xl font-bold">FacturaFácil</span>
@@ -54,7 +54,9 @@ export default function GuestNavbar() {
           <NavigationMenuList>
             <NavigationMenuItem>
               <Link href="/" legacyBehavior passHref>
-                <NavigationMenuLink className="group inline-flex h-9 w-max items-center justify-center rounded-md bg-background px-4 py-2 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground focus:outline-none disabled:pointer-events-none disabled:opacity-50 data-[active]:bg-accent/50 data-[state=open]:bg-accent/50">
+                <NavigationMenuLink className="group inline-flex h-9 w-max items-center justify-center rounded-md bg-background 
+                px-4 py-2 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent
+                 focus:text-accent-foreground focus:outline-none disabled:pointer-events-none disabled:opacity-50 data-[active]:bg-accent/50 data-[state=open]:bg-accent/50">
                   Inicio
                 </NavigationMenuLink>
               </Link>
