@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { createClient } from "@/app/lib/supabase/supabaseClient";
+import { createClient } from "@/lib/supabase/supabaseClient";
 
 export default function ResetPasswordPage() {
   const supabase = createClient();

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { createClient } from "@/app/lib/supabase/supabaseClient";
+import { createClient } from "@/lib/supabase/supabaseClient";
 import Link from "next/link";
 import { User } from "@supabase/supabase-js";
 import { FileText } from "lucide-react";
@@ -44,7 +44,7 @@ export default function GuestNavbar() {
         isScrolled ? "bg-white/80 backdrop-blur-md border-b" : "bg-white",
       )}
     >
-      <div className=" flex h-16 items-center justify-between p-5">
+      <div className=" flex h-16 items-center justify-between p-5 md:p-5">
         <Link href="/" className="flex items-center space-x-2">
           <FileText className="h-6 w-6 text-primary" />
           <span className="text-xl font-bold">FacturaFácil</span>

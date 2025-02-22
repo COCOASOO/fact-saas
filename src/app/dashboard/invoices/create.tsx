@@ -2,8 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { createInvoice } from "./actions";
-import { createClient } from "@/app/lib/supabase/supabaseClient";
-import { getClients } from "@/app/lib/database/clients";
+import { createClient } from "@/lib/supabase/supabaseClient";
+import { getClients } from "@/lib/database/clients";
 import { useRouter } from "next/navigation";
 
 export default function CreateInvoicePage() {
@@ -35,7 +35,7 @@ export default function CreateInvoicePage() {
     const { data, error } = await supabase.auth.getUser();
     if (data.user && clientId) {
       await createInvoice(data.user.id, clientId, parseFloat(amount));
-      router.push("/pages/dashboard/invoices");
+      router.push("/dashboard/invoices");
     } else {
       alert("Selecciona un cliente válido");
     }

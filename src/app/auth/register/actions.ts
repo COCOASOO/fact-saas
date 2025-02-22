@@ -1,4 +1,4 @@
-import { createClient } from "@/app/lib/supabase/supabaseClient";
+import { createClient } from "@/lib/supabase/supabaseClient";
 import { NextResponse } from "next/server";
 
 
@@ -55,6 +55,6 @@ export const handleSignup = async (e: React.FormEvent, email: string, password: 
     alert(error.message);
   } else {
     alert("A verification email has been sent to your email address.");
-    router.push("/pages/auth/login");
+    router.push("/auth/login");
   }
 };

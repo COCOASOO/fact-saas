@@ -1,6 +1,6 @@
 "use client";
 import { useState } from "react";
-import { addInvoice } from "@/app/lib/database/invoices";
+import { addInvoice } from "@/lib/database/invoices";
 
 interface InvoiceModalProps {
   closeModal: () => void;

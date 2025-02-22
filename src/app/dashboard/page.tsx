@@ -2,9 +2,9 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { createClient } from "@/app/lib/supabase/supabaseClient";
+import { createClient } from "@/lib/supabase/supabaseClient";
 import { User } from "@supabase/supabase-js";
-import { getUserByAuthUuid } from "@/app/lib/database/users";
+import { getUserByAuthUuid } from "@/lib/database/users";
 import { data } from "autoprefixer";
 
 
@@ -32,7 +32,7 @@ export default function Dashboard() {
         async function getUser() {
             const { data, error } = await supabase.auth.getUser();
             if (error || !data.user) {
-                router.push("/pages/auth/login");
+                router.push("/auth/login");
             } else {
                 setUser(data.user);
             }

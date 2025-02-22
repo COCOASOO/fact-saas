@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { createClient } from "@/app/lib/supabase/supabaseClient";
+import { createClient } from "@/lib/supabase/supabaseClient";
 import Link from "next/link";
 import { handleSignup } from "./actions";
 
@@ -124,7 +124,7 @@ export default function SignupPage() {
             <p className="text-center text-sm text-gray-500">
               Already have an account?{" "}
               <Link
-                href="/pages/auth/login"
+                href="/auth/login"
                 className="font-medium text-blue-600 hover:text-blue-500"
               >
                 Sign in

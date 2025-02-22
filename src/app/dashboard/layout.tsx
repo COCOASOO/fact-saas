@@ -1,25 +1,25 @@
-"use client"
+"use client";
 
-import * as React from "react"
-import { Sidebar, MobileSidebar } from "@/components/sidebar"
-import { SaasNavbar } from "@/components/SaasNavbar"
-import { cn } from "@/lib/utils"
+import * as React from "react";
+import { Sidebar, MobileSidebar } from "@/components/sidebar";
+import { SaasNavbar } from "@/components/SaasNavbar";
+import { cn } from "@/lib/utils";
 
 export default function DashboardLayout({
   children,
 }: {
-  children: React.ReactNode
+  children: React.ReactNode;
 }) {
-  const [isExpanded, setIsExpanded] = React.useState(true)
+  const [isExpanded, setIsExpanded] = React.useState(true);
 
   React.useEffect(() => {
-    const stored = localStorage.getItem("sidebarExpanded")
-    setIsExpanded(stored === "true")
-  }, [])
+    const stored = localStorage.getItem("sidebarExpanded");
+    setIsExpanded(stored === "true");
+  }, []);
 
   const handleSidebarToggle = (expanded: boolean) => {
-    setIsExpanded(expanded)
-  }
+    setIsExpanded(expanded);
+  };
 
   return (
     <div className="flex min-h-screen bg-background">
@@ -39,5 +39,5 @@ export default function DashboardLayout({
         <main className="flex-1 p-6">{children}</main>
       </div>
     </div>
-  )
+  );
 }

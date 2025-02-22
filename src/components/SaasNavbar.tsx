@@ -5,7 +5,7 @@ import Link from "next/link"
 import { LogOut } from 'lucide-react'
 import { User } from "@supabase/supabase-js"
 
-import { createClient } from "@/app/lib/supabase/supabaseClient"
+import { createClient } from "@/lib/supabase/supabaseClient"
 import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
 
@@ -24,7 +24,7 @@ export function SaasNavbar() {
 
   const handleLogout = async () => {
     await supabase.auth.signOut()
-    window.location.href = "/pages/auth/login"
+    window.location.href = "/auth/login"
   }
 
   if (!user) {
@@ -44,10 +44,10 @@ export function SaasNavbar() {
         </nav>
         <div className="flex items-center gap-2">
           <Button asChild variant="outline" size="sm">
-            <Link href="/pages/auth/register">Registrarse</Link>
+            <Link href="/auth/register">Registrarse</Link>
           </Button>
           <Button asChild size="sm">
-            <Link href="/pages/auth/login">Iniciar Sesión</Link>
+            <Link href="/auth/login">Iniciar Sesión</Link>
           </Button>
         </div>
       </div>
@@ -57,23 +57,13 @@ export function SaasNavbar() {
   return (
     <div className="flex flex-1 items-center justify-between">
       <nav className="flex items-center gap-4">
-        <Link href="/" className="text-sm font-medium text-primary">
-          Mi App
-        </Link>
-        <Separator orientation="vertical" className="h-4" />
         <Link
-          href="/"
-          className="text-sm text-muted-foreground hover:text-primary"
-        >
-          Inicio
-        </Link>
-        <Link
-          href="/pages/dashboard"
+          href="/dashboard"
           className="text-sm text-muted-foreground hover:text-primary"
         >
           Dashboard
         </Link>
-        <Separator orientation="vertical" className="h-4" />
+        <Separator orientation="vertical" className="h-3" />
         <span className="text-sm text-muted-foreground">{user.email}</span>
       </nav>
       <Button

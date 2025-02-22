@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { createClient } from "@/app/lib/supabase/supabaseClient";
+import { createClient } from "@/lib/supabase/supabaseClient";
 import Link from "next/link";
 
 export default function LoginPage() {
@@ -29,7 +29,7 @@ export default function LoginPage() {
     if (error) {
       setError(error.message);
     } else {
-      router.push("/pages/dashboard");
+      router.push("/dashboard");
     }
   };
 
@@ -113,7 +113,7 @@ export default function LoginPage() {
 
             <p className="text-center text-sm text-gray-500">
               Don't have an account? {" "}
-              <Link href="/pages/auth/signup" className="font-medium text-blue-600 hover:text-blue-500">
+              <Link href="/auth/register" className="font-medium text-blue-600 hover:text-blue-500">
                 Sign up
               </Link>
             </p>

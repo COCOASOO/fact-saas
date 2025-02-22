@@ -18,22 +18,22 @@ interface NavItem {
 
 const navItems: NavItem[] = [
   {
-    href: "/pages/dashboard",
+    href: "/dashboard",
     icon: LayoutDashboard,
     label: "Dashboard",
   },
   {
-    href: "/pages/dashboard/invoices",
+    href: "/dashboard/invoices",
     icon: FileText,
     label: "Facturas",
   },
   {
-    href: "/pages/dashboard/clients",
+    href: "/dashboard/clients",
     icon: Users,
     label: "Clientes",
   },
   {
-    href: "/pages/dashboard/settings",
+    href: "/dashboard/settings",
     icon: Settings,
     label: "Configuración",
   },
@@ -70,7 +70,7 @@ export function Sidebar({ className, onToggle }: SidebarProps) {
         className
       )}
     >
-      <div className="flex h-full flex-col gap-4">
+      <div className="flex h-full flex-col gap-4 ">
         <div className="flex h-16 items-center justify-between border-b px-4">
           {isExpanded && (
             <div className="flex items-center gap-2">

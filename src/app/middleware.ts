@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { updateSession } from "./lib/supabase/supabaseMiddleware";
+import { updateSession } from "../lib/supabase/supabaseMiddleware";
 
 export async function middleware(request: NextRequest) {
   // update user's auth session
@@ -15,7 +15,6 @@ export const config = {
     _next/image (image optimization files)
     favicon.ico (favicon file)
     Feel free to modify this pattern to include more paths.*/
-    '/pages/dashboard/:path*',
     '/dashboard/:path*',
     '/clients/:path*',
     '/invoices/:path*',

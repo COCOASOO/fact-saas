@@ -1,4 +1,4 @@
-import { createClient } from "@/app/lib/supabase/supabaseServer";
+import { createClient } from "@/lib/supabase/supabaseServer";
 import { redirect } from "next/navigation";
 
 export async function GET(request:Request) {
@@ -15,5 +15,5 @@ export async function GET(request:Request) {
         }
     }
 
-    redirect('/pages/auth/login');
+    redirect('/auth/login');
 }

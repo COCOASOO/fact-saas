@@ -1,11 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { getInvoices, addInvoice } from "@/app/lib/database/invoices";
-import { getClientsByUser } from "@/app/lib/database/clients"; // Función corregida para filtrar por usuario
-import { createClient } from "@/app/lib/supabase/supabaseClient";
+import { getInvoices, addInvoice } from "@/lib/database/invoices";
+import { getClientsByUser } from "@/lib/database/clients"; // Función corregida para filtrar por usuario
+import { createClient } from "@/lib/supabase/supabaseClient";
 import Link from "next/link";
-import { getUserByAuthUuid } from "@/app/lib/database/users";
+import { getUserByAuthUuid } from "@/lib/database/users";
 
 export default function InvoicesPage() {
   const [invoices, setInvoices] = useState<{ id: string; client_name: string; amount: number; status: string }[]>([]);
@@ -131,7 +131,7 @@ export default function InvoicesPage() {
               <td className="p-2">${invoice.amount}</td>
               <td className="p-2">{invoice.status}</td>
               <td className="p-2">
-                <Link href={`/pages/dashboard/invoices/${invoice.id}`}>
+                <Link href={`/dashboard/invoices/${invoice.id}`}>
                   <button className="bg-green-500 text-white px-3 py-1 rounded">Ver</button>
                 </Link>
               </td>
