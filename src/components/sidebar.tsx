@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Sheet, SheetContent } from "@/components/ui/sheet"
 import { cn } from "@/lib/utils"
+import "./../app/styles.css"
 
 interface NavItem {
   href: string
@@ -71,7 +72,7 @@ export function Sidebar({ className, onToggle }: SidebarProps) {
       )}
     >
       <div className="flex h-full flex-col gap-4 ">
-        <div className="flex h-16 items-center justify-between border-b px-4">
+        <div className="flex h-16 items-center justify-between border-b px-4 mt-1px">
           {isExpanded && (
             <div className="flex items-center gap-2">
               <FileText className="h-6 w-6" />
