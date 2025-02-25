@@ -47,9 +47,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     useEffect(() => {
         if (!loading && !session) {
-            const publicPaths = ['/auth/login', '/auth/register', '/']; // Agrega aquí las rutas públicas
+            const publicPaths = ['/pages/auth/login', '/pages/auth/register', '/']; // Agrega aquí las rutas públicas
             if (!publicPaths.includes(window.location.pathname)) {
-                router.push('/auth/login'); // Redirige a la página de inicio de sesión si no hay sesión
+                router.push('/pages/auth/login'); // Redirige a la página de inicio de sesión si no hay sesión
             }
         }
     }, [loading, session, router])
