@@ -1,40 +1,42 @@
 "use client";
 
 import { useAuth } from "@/app/contexts/authContext";
-import { getClients, addClient, updateClient, deleteClient, type Client } from "@/app/routes/clients/route";
-import { getInvoiceItems, addInvoiceItem, updateInvoiceItem, deleteInvoiceItem, type InvoiceItem } from "@/app/routes/invoice_items/route";
-import { getPayments, addPayment, type Payment } from "@/app/routes/payments/route";
+import { getCompanies, addCompany, updateCompany, deleteCompany, getCompanyById, type Company } from "@/app/routes/companies/route";
+import { getClients, addClient, updateClient, deleteClient, getClientById, type Client } from "@/app/routes/clients/route";
+import { getPayments, addPayment, getPaymentById, type Payment } from "@/app/routes/payments/route";
 import { getVerifactuLogs, addVerifactuLog, type VerifactuLog } from "@/app/routes/verifactu_logs/route";
+import { getUsers, getUserById, getCurrentUser, type User } from "@/app/routes/users/route";
 import { useState } from "react";
 
 export default function Dashboard() {
     const {user} = useAuth();
+    const [companies, setCompanies] = useState<Company[]>([]);
     const [clients, setClients] = useState<Client[]>([]);
-    const [invoiceItems, setInvoiceItems] = useState<InvoiceItem[]>([]);
     const [payments, setPayments] = useState<Payment[]>([]);
     const [logs, setLogs] = useState<VerifactuLog[]>([]);
+    const [users, setUsers] = useState<User[]>([]);
+    const [currentUser, setCurrentUser] = useState<User | null>(null);
+
+    // Datos de prueba para crear una empresa
+    const sampleCompany = {
+        name: `Empresa Prueba ${Math.floor(Math.random() * 1000)}`,
+        nif: `B${Math.floor(Math.random() * 100000000)}`,
+        country: "ESP",
+        email: "test@example.com"
+    };
 
     // Datos de prueba para crear un cliente
     const sampleClient = {
-        company_id: "b25dc479-ba38-44b6-a4cb-34dfda642ef9",
+        company_id: "b25dc479-ba38-44b6-a4cb-34dfda642ef9", // Asegúrate de usar un ID válido
         name: `Cliente Prueba ${Math.floor(Math.random() * 1000)}`,
         nif: `B${Math.floor(Math.random() * 100000000)}`,
         country: "ESP",
         applies_irpf: true
     };
 
-    // Datos de prueba para crear un item de factura
-    const sampleInvoiceItem = {
-        invoice_id: "19be3e74-a043-4755-a458-71bec95710cd", // Asegúrate de usar un ID válido de una factura existente
-        description: `Item de prueba ${Math.floor(Math.random() * 1000)}`,
-        quantity: Math.floor(Math.random() * 10) + 1,
-        unit_price: Math.floor(Math.random() * 100) + 1,
-        total_price: 0, // Se calculará antes de enviar
-    };
-
     // Datos de prueba para crear un pago
     const samplePayment = {
-        invoice_id: "19be3e74-a043-4755-a458-71bec95710cd", // Asegúrate de usar un ID válido de una factura existente
+        invoice_id: "19be3e74-a043-4755-a458-71bec95710cd", // Asegúrate de usar un ID válido
         amount: Math.floor(Math.random() * 1000) + 100,
         payment_method: 'card' as const,
         status: 'completed' as const,
@@ -42,7 +44,7 @@ export default function Dashboard() {
 
     // Datos de prueba para crear un log
     const sampleLog = {
-        invoice_id: "19be3e74-a043-4755-a458-71bec95710cd", // Asegúrate de usar un ID válido de una factura existente
+        invoice_id: "19be3e74-a043-4755-a458-71bec95710cd", // Asegúrate de usar un ID válido
         request_payload: {
             test: true,
             timestamp: new Date().toISOString(),
@@ -50,172 +52,185 @@ export default function Dashboard() {
         }
     };
 
+    // Manejadores para Companies
+    const handleGetCompanies = async () => {
+        try {
+            const result = await getCompanies();
+            setCompanies(result);
+        } catch (error) {
+            console.error("Error al obtener empresas:", error);
+        }
+    };
+
+    const handleCreateCompany = async () => {
+        try {
+            const result = await addCompany(sampleCompany);
+            handleGetCompanies();
+        } catch (error) {
+            console.error("Error al crear empresa:", error);
+        }
+    };
+
+    const handleUpdateCompany = async () => {
+        if (companies.length === 0) return;
+        try {
+            const result = await updateCompany(companies[0].id, {
+                name: `Empresa Actualizada ${Math.floor(Math.random() * 1000)}`
+            });
+            handleGetCompanies();
+        } catch (error) {
+            console.error("Error al actualizar empresa:", error);
+        }
+    };
+
+    const handleDeleteCompany = async () => {
+        if (companies.length === 0) return;
+        try {
+            await deleteCompany(companies[0].id);
+            handleGetCompanies();
+        } catch (error) {
+            console.error("Error al eliminar empresa:", error);
+        }
+    };
+
+    // Manejadores para Clients
     const handleGetClients = async () => {
-        console.log("🔍 Solicitando lista de clientes...");
         try {
             const result = await getClients();
-            console.log("📋 Clientes obtenidos:", result);
             setClients(result);
         } catch (error) {
-            console.error("❌ Error al obtener clientes:", error);
+            console.error("Error al obtener clientes:", error);
         }
     };
 
     const handleCreateClient = async () => {
-        console.log("📝 Creando cliente de prueba...");
         try {
             const result = await addClient(sampleClient);
-            console.log("✅ Cliente creado:", result);
-            handleGetClients(); // Actualizamos la lista
+            handleGetClients();
         } catch (error) {
-            console.error("❌ Error al crear cliente:", error);
+            console.error("Error al crear cliente:", error);
         }
     };
 
     const handleUpdateClient = async () => {
-        if (clients.length === 0) {
-            console.log("⚠️ No hay clientes para actualizar");
-            return;
-        }
-        const clientToUpdate = clients[0];
-        console.log("📝 Actualizando primer cliente...");
+        if (clients.length === 0) return;
         try {
-            const result = await updateClient(clientToUpdate.id, {
+            const result = await updateClient(clients[0].id, {
                 name: `Cliente Actualizado ${Math.floor(Math.random() * 1000)}`
             });
-            console.log("✅ Cliente actualizado:", result);
-            handleGetClients(); // Actualizamos la lista
+            handleGetClients();
         } catch (error) {
-            console.error("❌ Error al actualizar cliente:", error);
+            console.error("Error al actualizar cliente:", error);
         }
     };
 
     const handleDeleteClient = async () => {
-        if (clients.length === 0) {
-            console.log("⚠️ No hay clientes para eliminar");
-            return;
-        }
-        const clientToDelete = clients[0];
-        console.log("🗑️ Eliminando primer cliente...");
+        if (clients.length === 0) return;
         try {
-            await deleteClient(clientToDelete.id);
-            console.log("✅ Cliente eliminado");
-            handleGetClients(); // Actualizamos la lista
+            await deleteClient(clients[0].id);
+            handleGetClients();
         } catch (error) {
-            console.error("❌ Error al eliminar cliente:", error);
+            console.error("Error al eliminar cliente:", error);
         }
     };
 
-    const handleGetInvoiceItems = async () => {
-        console.log("🔍 Solicitando lista de items...");
-        try {
-            const result = await getInvoiceItems(sampleInvoiceItem.invoice_id);
-            console.log("📋 Items obtenidos:", result);
-            setInvoiceItems(result);
-        } catch (error) {
-            console.error("❌ Error al obtener items:", error);
-        }
-    };
-
-    const handleCreateInvoiceItem = async () => {
-        console.log("📝 Creando item de prueba...");
-        try {
-            // Calculamos el total_price antes de crear
-            const itemToCreate = {
-                ...sampleInvoiceItem,
-                total_price: sampleInvoiceItem.quantity * sampleInvoiceItem.unit_price
-            };
-            console.log("📝 Datos a enviar:", itemToCreate);
-            
-            const result = await addInvoiceItem(itemToCreate);
-            console.log("✅ Item creado:", result);
-            handleGetInvoiceItems(); // Actualizamos la lista
-        } catch (error) {
-            console.error("❌ Error al crear item:", error);
-        }
-    };
-
-    const handleUpdateInvoiceItem = async () => {
-        if (invoiceItems.length === 0) {
-            console.log("⚠️ No hay items para actualizar");
-            return;
-        }
-        const itemToUpdate = invoiceItems[0];
-        console.log("📝 Actualizando primer item...");
-        try {
-            const newQuantity = Math.floor(Math.random() * 10) + 1;
-            const result = await updateInvoiceItem(itemToUpdate.id, {
-                quantity: newQuantity,
-                total_price: newQuantity * itemToUpdate.unit_price
-            });
-            console.log("✅ Item actualizado:", result);
-            handleGetInvoiceItems(); // Actualizamos la lista
-        } catch (error) {
-            console.error("❌ Error al actualizar item:", error);
-        }
-    };
-
-    const handleDeleteInvoiceItem = async () => {
-        if (invoiceItems.length === 0) {
-            console.log("⚠️ No hay items para eliminar");
-            return;
-        }
-        const itemToDelete = invoiceItems[0];
-        console.log("🗑️ Eliminando primer item...");
-        try {
-            await deleteInvoiceItem(itemToDelete.id);
-            console.log("✅ Item eliminado");
-            handleGetInvoiceItems(); // Actualizamos la lista
-        } catch (error) {
-            console.error("❌ Error al eliminar item:", error);
-        }
-    };
-
+    // Manejadores para Payments
     const handleGetPayments = async () => {
-        console.log("🔍 Solicitando lista de pagos...");
         try {
             const result = await getPayments(samplePayment.invoice_id);
-            console.log("📋 Pagos obtenidos:", result);
             setPayments(result);
         } catch (error) {
-            console.error("❌ Error al obtener pagos:", error);
+            console.error("Error al obtener pagos:", error);
         }
     };
 
     const handleCreatePayment = async () => {
-        console.log("📝 Creando pago de prueba...");
         try {
-            console.log("📝 Datos a enviar:", samplePayment);
-            
             const result = await addPayment(samplePayment);
-            console.log("✅ Pago creado:", result);
-            handleGetPayments(); // Actualizamos la lista
+            handleGetPayments();
         } catch (error) {
-            console.error("❌ Error al crear pago:", error);
+            console.error("Error al crear pago:", error);
         }
     };
 
+    // Manejadores para VerifactuLogs
     const handleGetLogs = async () => {
-        console.log("🔍 Solicitando lista de logs...");
         try {
             const result = await getVerifactuLogs();
-            console.log("📋 Logs obtenidos:", result);
             setLogs(result);
         } catch (error) {
-            console.error("❌ Error al obtener logs:", error);
+            console.error("Error al obtener logs:", error);
         }
     };
 
     const handleCreateLog = async () => {
-        console.log("📝 Creando log de prueba...");
         try {
-            console.log("📝 Datos a enviar:", sampleLog);
-            
             const result = await addVerifactuLog(sampleLog);
-            console.log("✅ Log creado:", result);
-            handleGetLogs(); // Actualizamos la lista
+            handleGetLogs();
         } catch (error) {
-            console.error("❌ Error al crear log:", error);
+            console.error("Error al crear log:", error);
+        }
+    };
+
+    // Manejadores adicionales para Users
+    const handleGetUsers = async () => {
+        try {
+            const result = await getUsers();
+            setUsers(result);
+        } catch (error) {
+            console.error("Error al obtener usuarios:", error);
+        }
+    };
+
+    const handleGetUserById = async () => {
+        if (users.length === 0) return;
+        try {
+            const result = await getUserById(users[0].id);
+            console.log("Usuario específico:", result);
+        } catch (error) {
+            console.error("Error al obtener usuario específico:", error);
+        }
+    };
+
+    const handleGetCurrentUser = async () => {
+        try {
+            const result = await getCurrentUser();
+            setCurrentUser(result);
+        } catch (error) {
+            console.error("Error al obtener usuario actual:", error);
+        }
+    };
+
+    // Manejadores adicionales para Companies
+    const handleGetCompanyById = async () => {
+        if (companies.length === 0) return;
+        try {
+            const result = await getCompanyById(companies[0].id);
+            console.log("Empresa específica:", result);
+        } catch (error) {
+            console.error("Error al obtener empresa específica:", error);
+        }
+    };
+
+    // Manejadores adicionales para Clients
+    const handleGetClientById = async () => {
+        if (clients.length === 0) return;
+        try {
+            const result = await getClientById(clients[0].id);
+            console.log("Cliente específico:", result);
+        } catch (error) {
+            console.error("Error al obtener cliente específico:", error);
+        }
+    };
+
+    // Manejadores adicionales para Payments
+    const handleGetPaymentById = async () => {
+        if (payments.length === 0) return;
+        try {
+            const result = await getPaymentById(payments[0].id);
+            console.log("Pago específico:", result);
+        } catch (error) {
+            console.error("Error al obtener pago específico:", error);
         }
     };
 
@@ -224,77 +239,113 @@ export default function Dashboard() {
             <h1 className="text-2xl font-bold mb-4">Dashboard</h1>
             {user && <p className="mb-4">Bienvenido, {user.email}</p>}
             
-            <div className="space-x-4 mb-8">
-                <button onClick={handleGetClients} className="bg-blue-500 text-white px-4 py-2 rounded">
-                    Listar Clientes
-                </button>
-                <button onClick={handleCreateClient} className="bg-green-500 text-white px-4 py-2 rounded">
-                    Crear Cliente
-                </button>
-                <button onClick={handleUpdateClient} className="bg-yellow-500 text-white px-4 py-2 rounded">
-                    Actualizar Primer Cliente
-                </button>
-                <button onClick={handleDeleteClient} className="bg-red-500 text-white px-4 py-2 rounded">
-                    Eliminar Primer Cliente
-                </button>
+            {/* Users Section */}
+            <div className="mb-8">
+                <h2 className="text-xl font-semibold mb-2">Usuarios</h2>
+                <div className="space-x-4 mb-4">
+                    <button onClick={handleGetUsers} className="bg-blue-500 text-white px-4 py-2 rounded">
+                        Listar Usuarios
+                    </button>
+                    <button onClick={handleGetUserById} className="bg-blue-500 text-white px-4 py-2 rounded">
+                        Obtener Usuario por ID
+                    </button>
+                    <button onClick={handleGetCurrentUser} className="bg-blue-500 text-white px-4 py-2 rounded">
+                        Obtener Usuario Actual
+                    </button>
+                </div>
+                <pre className="bg-gray-100 p-4 rounded">
+                    {JSON.stringify(users, null, 2)}
+                </pre>
+                {currentUser && (
+                    <div className="mt-4">
+                        <h3 className="font-semibold">Usuario Actual:</h3>
+                        <pre className="bg-gray-100 p-4 rounded">
+                            {JSON.stringify(currentUser, null, 2)}
+                        </pre>
+                    </div>
+                )}
             </div>
 
-            <div className="space-x-4 mb-8">
-                <button onClick={handleGetInvoiceItems} className="bg-blue-500 text-white px-4 py-2 rounded">
-                    Listar Items
-                </button>
-                <button onClick={handleCreateInvoiceItem} className="bg-green-500 text-white px-4 py-2 rounded">
-                    Crear Item
-                </button>
-                <button onClick={handleUpdateInvoiceItem} className="bg-yellow-500 text-white px-4 py-2 rounded">
-                    Actualizar Primer Item
-                </button>
-                <button onClick={handleDeleteInvoiceItem} className="bg-red-500 text-white px-4 py-2 rounded">
-                    Eliminar Primer Item
-                </button>
+            {/* Companies Section */}
+            <div className="mb-8">
+                <h2 className="text-xl font-semibold mb-2">Empresas</h2>
+                <div className="space-x-4 mb-4">
+                    <button onClick={handleGetCompanies} className="bg-blue-500 text-white px-4 py-2 rounded">
+                        Listar Empresas
+                    </button>
+                    <button onClick={handleGetCompanyById} className="bg-blue-500 text-white px-4 py-2 rounded">
+                        Obtener Empresa por ID
+                    </button>
+                    <button onClick={handleCreateCompany} className="bg-green-500 text-white px-4 py-2 rounded">
+                        Crear Empresa
+                    </button>
+                    <button onClick={handleUpdateCompany} className="bg-yellow-500 text-white px-4 py-2 rounded">
+                        Actualizar Primera Empresa
+                    </button>
+                    <button onClick={handleDeleteCompany} className="bg-red-500 text-white px-4 py-2 rounded">
+                        Eliminar Primera Empresa
+                    </button>
+                </div>
+                <pre className="bg-gray-100 p-4 rounded">
+                    {JSON.stringify(companies, null, 2)}
+                </pre>
             </div>
 
-            <div className="space-x-4 mb-8">
-                <button onClick={handleGetPayments} className="bg-blue-500 text-white px-4 py-2 rounded">
-                    Listar Pagos
-                </button>
-                <button onClick={handleCreatePayment} className="bg-green-500 text-white px-4 py-2 rounded">
-                    Crear Pago
-                </button>
-            </div>
-
-            <div className="space-x-4 mb-8">
-                <button onClick={handleGetLogs} className="bg-blue-500 text-white px-4 py-2 rounded">
-                    Listar Logs
-                </button>
-                <button onClick={handleCreateLog} className="bg-green-500 text-white px-4 py-2 rounded">
-                    Crear Log
-                </button>
-            </div>
-
-            <div className="mt-4">
-                <h2 className="text-xl font-semibold mb-2">Clientes ({clients.length})</h2>
+            {/* Clients Section */}
+            <div className="mb-8">
+                <h2 className="text-xl font-semibold mb-2">Clientes</h2>
+                <div className="space-x-4 mb-4">
+                    <button onClick={handleGetClients} className="bg-blue-500 text-white px-4 py-2 rounded">
+                        Listar Clientes
+                    </button>
+                    <button onClick={handleGetClientById} className="bg-blue-500 text-white px-4 py-2 rounded">
+                        Obtener Cliente por ID
+                    </button>
+                    <button onClick={handleCreateClient} className="bg-green-500 text-white px-4 py-2 rounded">
+                        Crear Cliente
+                    </button>
+                    <button onClick={handleUpdateClient} className="bg-yellow-500 text-white px-4 py-2 rounded">
+                        Actualizar Primer Cliente
+                    </button>
+                    <button onClick={handleDeleteClient} className="bg-red-500 text-white px-4 py-2 rounded">
+                        Eliminar Primer Cliente
+                    </button>
+                </div>
                 <pre className="bg-gray-100 p-4 rounded">
                     {JSON.stringify(clients, null, 2)}
                 </pre>
             </div>
 
-            <div className="mt-4">
-                <h2 className="text-xl font-semibold mb-2">Items de Factura ({invoiceItems.length})</h2>
-                <pre className="bg-gray-100 p-4 rounded">
-                    {JSON.stringify(invoiceItems, null, 2)}
-                </pre>
-            </div>
-
-            <div className="mt-4">
-                <h2 className="text-xl font-semibold mb-2">Pagos ({payments.length})</h2>
+            {/* Payments Section */}
+            <div className="mb-8">
+                <h2 className="text-xl font-semibold mb-2">Pagos</h2>
+                <div className="space-x-4 mb-4">
+                    <button onClick={handleGetPayments} className="bg-blue-500 text-white px-4 py-2 rounded">
+                        Listar Pagos
+                    </button>
+                    <button onClick={handleGetPaymentById} className="bg-blue-500 text-white px-4 py-2 rounded">
+                        Obtener Pago por ID
+                    </button>
+                    <button onClick={handleCreatePayment} className="bg-green-500 text-white px-4 py-2 rounded">
+                        Crear Pago
+                    </button>
+                </div>
                 <pre className="bg-gray-100 p-4 rounded">
                     {JSON.stringify(payments, null, 2)}
                 </pre>
             </div>
 
-            <div className="mt-4">
-                <h2 className="text-xl font-semibold mb-2">Logs de Verifactu ({logs.length})</h2>
+            {/* VerifactuLogs Section */}
+            <div className="mb-8">
+                <h2 className="text-xl font-semibold mb-2">Logs de Verifactu</h2>
+                <div className="space-x-4 mb-4">
+                    <button onClick={handleGetLogs} className="bg-blue-500 text-white px-4 py-2 rounded">
+                        Listar Logs
+                    </button>
+                    <button onClick={handleCreateLog} className="bg-green-500 text-white px-4 py-2 rounded">
+                        Crear Log
+                    </button>
+                </div>
                 <pre className="bg-gray-100 p-4 rounded">
                     {JSON.stringify(logs, null, 2)}
                 </pre>
