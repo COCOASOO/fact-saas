@@ -19,22 +19,22 @@ interface NavItem {
 
 const navItems: NavItem[] = [
   {
-    href: "/dashboard",
+    href: "/pages/dashboard",
     icon: LayoutDashboard,
     label: "Dashboard",
   },
   {
-    href: "/dashboard/invoices",
+    href: "/pages/dashboard/invoices",
     icon: FileText,
     label: "Facturas",
   },
   {
-    href: "/dashboard/clients",
+    href: "/pages/dashboard/clients",
     icon: Users,
     label: "Clientes",
   },
   {
-    href: "/dashboard/settings",
+    href: "/pages/dashboard/settings",
     icon: Settings,
     label: "Configuración",
   },

@@ -24,7 +24,7 @@ export function SaasNavbar() {
 
   const handleLogout = async () => {
     await supabase.auth.signOut()
-    window.location.href = "/auth/login"
+    window.location.href = "/pages/auth/login"
   }
 
   if (!user) {
@@ -44,10 +44,10 @@ export function SaasNavbar() {
         </nav>
         <div className="flex items-center gap-2">
           <Button asChild variant="outline" size="sm">
-            <Link href="/auth/register">Registrarse</Link>
+            <Link href="/pages/auth/register">Registrarse</Link>
           </Button>
           <Button asChild size="sm">
-            <Link href="/auth/login">Iniciar Sesión</Link>
+            <Link href="/pages/auth/login">Iniciar Sesión</Link>
           </Button>
         </div>
       </div>
@@ -58,7 +58,7 @@ export function SaasNavbar() {
     <div className="flex flex-1 items-center justify-between">
       <nav className="flex items-center gap-4">
         <Link
-          href="/dashboard"
+          href="/pages/dashboard"
           className="text-sm text-muted-foreground hover:text-primary"
         >
           Dashboard

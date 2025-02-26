@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/supabaseClient";
 import Link from "next/link";
-import { handleSignup } from "./actions";
+import { signUp } from "@/app/routes/auth/route";
 
 export default function SignupPage() {
   const router = useRouter();
@@ -18,6 +18,17 @@ export default function SignupPage() {
   const [isLoading, setIsLoading] = useState(false);
 
   const url = process.env.NEXT_PUBLIC_BASE_URL;
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    await signUp(
+      e,
+      email,
+      password,
+      phone,
+      name,
+      router
+    );
+  };
 
   return (
     <div className="min-h-screen flex flex-col lg:flex-row">
@@ -62,10 +73,7 @@ export default function SignupPage() {
             Create your account
           </h1>
           <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              handleSignup(e, email, password, phone, name, router);
-            }}
+            onSubmit={handleSubmit}
             className="space-y-6"
           >
             {error && (

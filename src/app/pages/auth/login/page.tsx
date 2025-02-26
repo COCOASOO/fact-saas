@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/supabaseClient";
 import Link from "next/link";
+import { signIn } from "@/app/routes/auth/route";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -14,23 +15,15 @@ export default function LoginPage() {
   const [error, setError] = useState<string | null>(null);
   const [isLoggingIn, setIsLoggingIn] = useState(false);
 
-  const handleLogin = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError(null);
-    setIsLoggingIn(true);
-
-    const { error } = await supabase.auth.signInWithPassword({
+    await signIn(
       email,
       password,
-    });
-
-    setIsLoggingIn(false);
-
-    if (error) {
-      setError(error.message);
-    } else {
-      router.push("/dashboard");
-    }
+      setError,
+      setIsLoggingIn,
+      router
+    );
   };
 
   return (
@@ -49,7 +42,7 @@ export default function LoginPage() {
             <p className="text-gray-600 mt-2">Enter your credentials to access your account</p>
           </div>
 
-          <form onSubmit={handleLogin} className="space-y-6">
+          <form onSubmit={handleSubmit} className="space-y-6">
             {error && (
               <div className="p-4 rounded-lg bg-red-50 border border-red-100 text-red-600 text-sm">{error}</div>
             )}

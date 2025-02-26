@@ -117,7 +117,7 @@ export default function GuestNavbar() {
 
         <div>
           {user ? (
-            <Link href="/dashboard" className="bg-blue-500 px-4 py-2 text-white rounded">
+            <Link href="/pages/dashboard" className="bg-blue-500 px-4 py-2 text-white rounded">
               Ir al Dashboard
             </Link>
           ) : (
