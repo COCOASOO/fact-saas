@@ -1,17 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
-import { createClient } from "@/lib/supabase/supabaseClient";
-import { User } from "@supabase/supabase-js";
-import { data } from "autoprefixer";
-
-
+import { useAuth } from "@/app/contexts/authContext";
 
 export default function Dashboard() {
-    const [user, setUser] = useState<User | null>(null); 
-    const router = useRouter();
-    const supabase = createClient(); 
+    const {user} = useAuth();
 
     return (
         <div className="p-8">
