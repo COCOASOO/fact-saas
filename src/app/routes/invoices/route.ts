@@ -66,7 +66,10 @@ export async function getInvoices() {
         
         const { data: invoices, error } = await supabase
             .from('invoices')
-            .select('*')
+            .select(`
+                *,
+                clients!inner(*)
+            `)
             .eq('user_id', userId)
 
         if (error) {
@@ -92,7 +95,10 @@ export async function getInvoiceById(id: string) {
         
         const { data: invoice, error } = await supabase
             .from('invoices')
-            .select('*')
+            .select(`
+                *,
+                clients!inner(*)
+            `)
             .eq('id', id)
             .eq('user_id', userId)
             .single()
@@ -118,6 +124,19 @@ export async function addInvoice(invoice: CreateInvoiceDTO) {
         console.log('📝 Datos recibidos:', invoice);
         const userId = await getCurrentUserId()
         
+        // Verificar que el cliente existe y pertenece al usuario
+        const { data: client, error: clientError } = await supabase
+            .from('clients')
+            .select('*')
+            .eq('id', invoice.client_id)
+            .eq('user_id', userId)
+            .single()
+
+        if (clientError || !client) {
+            console.error('❌ Cliente no encontrado o no autorizado');
+            throw new Error('Cliente no encontrado o no autorizado')
+        }
+        
         const invoiceData = {
             ...invoice,
             user_id: userId,
@@ -131,7 +150,10 @@ export async function addInvoice(invoice: CreateInvoiceDTO) {
         const { data, error } = await supabase
             .from('invoices')
             .insert([invoiceData])
-            .select()
+            .select(`
+                *,
+                clients!inner(*)
+            `)
             .single()
 
         if (error) {
@@ -158,12 +180,30 @@ export async function updateInvoice(id: string, invoice: UpdateInvoiceDTO) {
         console.log('Datos a actualizar:', invoice);
         const userId = await getCurrentUserId()
         
+        // Si se está actualizando el client_id, verificar que el nuevo cliente existe y pertenece al usuario
+        if (invoice.client_id) {
+            const { data: client, error: clientError } = await supabase
+                .from('clients')
+                .select('*')
+                .eq('id', invoice.client_id)
+                .eq('user_id', userId)
+                .single()
+
+            if (clientError || !client) {
+                console.error('❌ Cliente no encontrado o no autorizado');
+                throw new Error('Cliente no encontrado o no autorizado')
+            }
+        }
+        
         const { data, error } = await supabase
             .from('invoices')
             .update(invoice)
             .eq('id', id)
             .eq('user_id', userId)
-            .select()
+            .select(`
+                *,
+                clients!inner(*)
+            `)
             .single()
 
         if (error) {
