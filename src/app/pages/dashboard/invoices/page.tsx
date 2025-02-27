@@ -1,0 +1,267 @@
+"use client"
+
+import { useState } from "react"
+import { Plus, Pencil, Trash2, Search, Download, Building2 } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog"
+import { Badge } from "@/components/ui/badge"
+import Link from "next/link"
+import { InvoiceForm } from "@/components/forms/InvoiceForm"
+import type { Invoice } from "@/app/types/invoice"
+import { formatCurrency, formatDate } from "@/lib/utils/invoice-calculations"
+
+// Mock data for demonstration
+const initialInvoices: Invoice[] = [
+  {
+    id: "550e8400-e29b-41d4-a716-446655440000",
+    created_at: "2023-01-15T08:30:00Z",
+    user_id: "user123",
+    client_id: "client123",
+    company_id: "company123",
+    date: "2023-01-15",
+    invoice_number: "FAC-2023-001",
+    status: "paid",
+    pdf_url: "https://example.com/invoice1.pdf",
+    invoice_date: "2023-01-15",
+    due_date: "2023-02-14",
+    currency: "EUR",
+    subtotal: 1000.0,
+    tax_rate: 21,
+    tax_amount: 210.0,
+    irpf_rate: 15,
+    irpf_amount: 150.0,
+    total_amount: 1060.0,
+    verifactu_xml: null,
+    verifactu_hash: null,
+    verifactu_signature: null,
+    verifactu_status: null,
+    verifactu_response: null,
+    updated_at: "2023-01-15T08:30:00Z",
+  },
+  // Add more mock invoices as needed
+]
+
+const getStatusColor = (status: Invoice["status"]) => {
+  switch (status) {
+    case "paid":
+      return "bg-green-100 text-green-800"
+    case "pending":
+      return "bg-yellow-100 text-yellow-800"
+    case "cancelled":
+      return "bg-red-100 text-red-800"
+    default:
+      return "bg-gray-100 text-gray-800"
+  }
+}
+
+const getStatusText = (status: Invoice["status"]) => {
+  switch (status) {
+    case "paid":
+      return "Pagada"
+    case "pending":
+      return "Pendiente"
+    case "cancelled":
+      return "Cancelada"
+    default:
+      return "Borrador"
+  }
+}
+
+export default function InvoicesPage() {
+  const [invoices, setInvoices] = useState<Invoice[]>(initialInvoices)
+  const [searchQuery, setSearchQuery] = useState("")
+  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
+  const [currentInvoice, setCurrentInvoice] = useState<Invoice | null>(null)
+
+  // Filter invoices based on search query
+  const filteredInvoices = invoices.filter((invoice) =>
+    invoice.invoice_number.toLowerCase().includes(searchQuery.toLowerCase()),
+  )
+
+  // Handle invoice creation
+  const handleCreateInvoice = (newInvoice: Invoice) => {
+    setInvoices([...invoices, newInvoice])
+    setIsCreateDialogOpen(false)
+  }
+
+  // Handle invoice edit
+  const handleEditInvoice = (updatedInvoice: Invoice) => {
+    setInvoices(invoices.map((invoice) => (invoice.id === updatedInvoice.id ? updatedInvoice : invoice)))
+    setIsEditDialogOpen(false)
+    setCurrentInvoice(null)
+  }
+
+  // Handle invoice deletion
+  const handleDeleteInvoice = (id: string) => {
+    setInvoices(invoices.filter((invoice) => invoice.id !== id))
+    setIsDeleteDialogOpen(false)
+    setCurrentInvoice(null)
+  }
+
+  return (
+    <div className="h-full flex-1 flex-col space-y-8 p-8 md:flex">
+      <div className="flex items-center justify-between space-y-2">
+        <div>
+          <h2 className="text-2xl font-bold tracking-tight">Facturas</h2>
+          <p className="text-muted-foreground">Gestiona tus facturas y su información</p>
+        </div>
+        <div className="flex items-center space-x-2">
+          <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
+            <DialogTrigger asChild>
+              <Button>
+                <Plus className="mr-2 h-4 w-4" /> Nueva Factura
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-[800px] max-h-[90vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle>Crear Nueva Factura</DialogTitle>
+                <DialogDescription>Crea una nueva factura. Rellena los detalles a continuación.</DialogDescription>
+              </DialogHeader>
+              <InvoiceForm onSubmit={handleCreateInvoice} onCancel={() => setIsCreateDialogOpen(false)} />
+            </DialogContent>
+          </Dialog>
+        </div>
+      </div>
+      <div className="space-y-4">
+        <div className="flex items-center gap-2">
+          <div className="relative flex-1 max-w-sm">
+            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Buscar facturas..."
+              className="pl-8"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
+          </div>
+        </div>
+        <div className="border rounded-lg">
+          <Table>
+            <TableHeader>
+              <TableRow className="bg-muted/50">
+                <TableHead className="w-[150px]">Número</TableHead>
+                <TableHead className="w-[120px]">Fecha</TableHead>
+                <TableHead>Cliente</TableHead>
+                <TableHead className="text-right">Base</TableHead>
+                <TableHead className="text-right">IVA</TableHead>
+                <TableHead className="text-right">IRPF</TableHead>
+                <TableHead className="text-right">Total</TableHead>
+                <TableHead className="w-[100px] text-center">Estado</TableHead>
+                <TableHead className="w-[100px] text-right">Acciones</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {filteredInvoices.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={9} className="h-24 text-center">
+                    No se encontraron facturas.
+                  </TableCell>
+                </TableRow>
+              ) : (
+                filteredInvoices.map((invoice) => (
+                  <TableRow key={invoice.id}>
+                    <TableCell className="font-medium">{invoice.invoice_number}</TableCell>
+                    <TableCell>{formatDate(invoice.invoice_date)}</TableCell>
+                    <TableCell>Cliente Example</TableCell>
+                    <TableCell className="text-right">{formatCurrency(invoice.subtotal)}</TableCell>
+                    <TableCell className="text-right">{formatCurrency(invoice.tax_amount)}</TableCell>
+                    <TableCell className="text-right">{formatCurrency(invoice.irpf_amount)}</TableCell>
+                    <TableCell className="text-right font-medium">{formatCurrency(invoice.total_amount)}</TableCell>
+                    <TableCell className="text-center">
+                      <Badge className={getStatusColor(invoice.status)}>{getStatusText(invoice.status)}</Badge>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex justify-end gap-2">
+                        {invoice.pdf_url && (
+                          <Button variant="ghost" size="icon" asChild>
+                            <a href={invoice.pdf_url} target="_blank" rel="noopener noreferrer">
+                              <Download className="h-4 w-4" />
+                              <span className="sr-only">Descargar PDF</span>
+                            </a>
+                          </Button>
+                        )}
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => {
+                            setCurrentInvoice(invoice)
+                            setIsEditDialogOpen(true)
+                          }}
+                        >
+                          <Pencil className="h-4 w-4" />
+                          <span className="sr-only">Editar</span>
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="text-red-500 hover:text-red-500"
+                          onClick={() => {
+                            setCurrentInvoice(invoice)
+                            setIsDeleteDialogOpen(true)
+                          }}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                          <span className="sr-only">Eliminar</span>
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </div>
+      </div>
+
+      {/* Edit Invoice Dialog */}
+      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+        <DialogContent className="sm:max-w-[800px] max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Editar Factura</DialogTitle>
+            <DialogDescription>Modifica los detalles de la factura a continuación.</DialogDescription>
+          </DialogHeader>
+          {currentInvoice && (
+            <InvoiceForm
+              invoice={currentInvoice}
+              onSubmit={handleEditInvoice}
+              onCancel={() => setIsEditDialogOpen(false)}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Eliminar Factura</DialogTitle>
+            <DialogDescription>
+              ¿Estás seguro de que quieres eliminar la factura {currentInvoice?.invoice_number}? Esta acción no se puede
+              deshacer.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsDeleteDialogOpen(false)}>
+              Cancelar
+            </Button>
+            <Button variant="destructive" onClick={() => currentInvoice && handleDeleteInvoice(currentInvoice.id)}>
+              Eliminar Factura
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
+  )
+}
+

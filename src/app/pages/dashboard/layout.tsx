@@ -3,7 +3,7 @@
 import * as React from "react";
 import { Sidebar, MobileSidebar } from "@/components/sidebar";
 import { SaasNavbar } from "@/components/SaasNavbar";
-import { cn } from "@/lib/utils";
+import { cn } from "@/lib/utils/utils";
 
 export default function DashboardLayout({
   children,
