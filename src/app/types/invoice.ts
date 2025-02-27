@@ -1,56 +1,47 @@
+import { Client } from "./client";
+import { Company } from "./company";
+
 export interface Invoice {
-    id: string
-    created_at: string
-    user_id: string
-    client_id: string
-    company_id: string
-    date: string
-    invoice_number: string
-    status: "draft" | "pending" | "paid" | "cancelled"
-    pdf_url: string | null
-    invoice_date: string
-    due_date: string
-    currency: string
-    subtotal: number
-    tax_rate: number
-    tax_amount: number
-    irpf_rate: number
-    irpf_amount: number
-    total_amount: number
-    verifactu_xml: string | null
-    verifactu_hash: string | null
-    verifactu_signature: string | null
-    verifactu_status: string | null
-    verifactu_response: string | null
-    updated_at: string
-  }
-  
-  export interface InvoiceFormData
-    extends Omit<
-      Invoice,
-      | "id"
-      | "created_at"
-      | "updated_at"
-      | "pdf_url"
-      | "verifactu_xml"
-      | "verifactu_hash"
-      | "verifactu_signature"
-      | "verifactu_status"
-      | "verifactu_response"
-    > {
-    // Form specific fields can be added here
-  }
-  
-  export interface Client {
-    id: string
-    name: string
-    // Add other client fields as needed
-  }
-  
-  export interface Company {
-    id: string
-    name: string
-    // Add other company fields as needed
-  }
-  
-  
+  id: string;
+  created_at: string;
+  user_id: string;
+  client_id: string;
+  client?:Client,
+  company_id: string;
+  company?:Company,
+  date: string;
+  invoice_number: string;
+  status: "draft" | "pending" | "paid" | "cancelled";
+  pdf_url: string | null;
+  invoice_date: string;
+  due_date: string;
+  currency: string;
+  subtotal: number;
+  tax_rate: number;
+  tax_amount: number;
+  irpf_rate: number;
+  irpf_amount: number;
+  total_amount: number;
+  verifactu_xml: string | null;
+  verifactu_hash: string | null;
+  verifactu_signature: string | null;
+  verifactu_status: string | null;
+  verifactu_response: string | null;
+  updated_at: string;
+}
+
+export interface InvoiceFormData
+  extends Omit<
+    Invoice,
+    | "id"
+    | "created_at"
+    | "updated_at"
+    | "pdf_url"
+    | "verifactu_xml"
+    | "verifactu_hash"
+    | "verifactu_signature"
+    | "verifactu_status"
+    | "verifactu_response"
+  > {
+  // Form specific fields can be added here
+}
