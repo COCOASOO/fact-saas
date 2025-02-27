@@ -45,27 +45,17 @@ async function getCurrentUserId() {
 }
 
 export async function getCompanies() {
-    console.group('📋 getCompanies()');
     try {
         const userId = await getCurrentUserId()
-        console.log('🔍 Buscando empresas para user_id:', userId);
         
         const { data: companies, error } = await supabase
             .from('companies')
             .select('*')
             .eq('user_id', userId)
 
-        if (error) {
-            console.error('❌ Error al obtener empresas:', error);
-            throw error
-        }
-        
-        console.log('✅ Empresas encontradas:', companies);
-        console.groupEnd();
+        if (error) throw error
         return companies as Company[]
     } catch (error) {
-        console.error('❌ Error en getCompanies:', error);
-        console.groupEnd();
         throw error;
     }
 }
@@ -99,18 +89,14 @@ export async function getCompanyById(id: string) {
 }
 
 export async function addCompany(company: CreateCompanyDTO) {
-    console.group('➕ addCompany()');
     try {
-        console.log('📝 Datos recibidos:', company);
         const userId = await getCurrentUserId()
         
-        // Preparamos los datos de la empresa
         const companyData = {
             ...company,
             user_id: userId,
             country: company.country || 'ESP'
         }
-        console.log('📝 Datos a insertar:', companyData);
 
         const { data, error } = await supabase
             .from('companies')
@@ -119,19 +105,14 @@ export async function addCompany(company: CreateCompanyDTO) {
             .single()
 
         if (error) {
-            console.error('❌ Error al crear empresa:', error);
             if (error.code === '23505') {
                 throw new Error('Ya existe una empresa con este NIF')
             }
             throw error
         }
 
-        console.log('✅ Empresa creada:', data);
-        console.groupEnd();
         return data as Company
     } catch (error) {
-        console.error('❌ Error en addCompany:', error);
-        console.groupEnd();
         throw error;
     }
 }

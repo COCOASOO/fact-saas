@@ -18,6 +18,8 @@ import { Badge } from "@/components/ui/badge"
 import { ClientForm } from "@/components/forms/ClientForm"
 import { getClients, addClient, updateClient, deleteClient } from "@/app/routes/clients/route"
 import { Client, CreateClientDTO, UpdateClientDTO } from "@/app/routes/clients/route"
+import { getCompanies } from "@/app/routes/companies/route"
+import type { Company } from "@/app/routes/companies/route"
 
 export default function ClientsPage() {
   const [clients, setClients] = useState<Client[]>([])
@@ -28,23 +30,27 @@ export default function ClientsPage() {
   const [currentClient, setCurrentClient] = useState<Client | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-
-  // Cargar clientes al montar el componente
-  useEffect(() => {
-    loadClients()
-  }, [])
+  const [companies, setCompanies] = useState<Company[]>([])
 
   const loadClients = async () => {
     try {
       setIsLoading(true)
-      const data = await getClients()
-      setClients(data)
+      const [clientsData, companiesData] = await Promise.all([
+        getClients(),
+        getCompanies()
+      ])
+      setClients(clientsData)
+      setCompanies(companiesData)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error al cargar los clientes')
+      setError(err instanceof Error ? err.message : 'Error al cargar los datos')
     } finally {
       setIsLoading(false)
     }
   }
+
+  useEffect(() => {
+    loadClients()
+  }, [])
 
   // Filter clients based on search query
   const filteredClients = clients.filter(
@@ -177,6 +183,7 @@ export default function ClientsPage() {
             <TableHeader>
               <TableRow className="bg-muted/50">
                 <TableHead className="w-[300px]">Detalles del Cliente</TableHead>
+                <TableHead className="w-[200px]">Empresa</TableHead>
                 <TableHead className="w-[200px]">Contacto</TableHead>
                 <TableHead className="hidden md:table-cell">Ubicación</TableHead>
                 <TableHead className="w-[100px] text-center">IRPF</TableHead>
@@ -186,67 +193,80 @@ export default function ClientsPage() {
             <TableBody>
               {filteredClients.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={5} className="h-24 text-center">
+                  <TableCell colSpan={6} className="h-24 text-center">
                     No se encontraron clientes.
                   </TableCell>
                 </TableRow>
               ) : (
-                filteredClients.map((client) => (
-                  <TableRow key={client.id}>
-                    <TableCell>
-                      <div className="flex flex-col gap-1">
-                        <div className="font-medium">{client.name}</div>
-                        <div className="text-sm text-muted-foreground flex items-center gap-2">
-                          <Building2 className="h-3 w-3" />
-                          {client.nif}
+                filteredClients.map((client) => {
+                  const company = companies.find(company => company.id === client.company_id);
+                  return (
+                    <TableRow key={client.id}>
+                      <TableCell>
+                        <div className="flex flex-col gap-1">
+                          <div className="font-medium">{client.name}</div>
+                          <div className="text-sm text-muted-foreground flex items-center gap-2">
+                            <Building2 className="h-3 w-3" />
+                            {client.nif}
+                          </div>
                         </div>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex flex-col gap-1">
-                        <div className="text-sm flex items-center gap-2">
-                          <Mail className="h-3 w-3" />
-                          {client.email}
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex flex-col gap-1">
+                          <div className="font-medium">
+                            {company?.name || 'N/A'}
+                          </div>
+                          <div className="text-sm text-muted-foreground">
+                            {company?.nif || 'N/A'}
+                          </div>
                         </div>
-                        <div className="text-sm text-muted-foreground flex items-center gap-2">
-                          <Phone className="h-3 w-3" />
-                          {client.phone}
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex flex-col gap-1">
+                          <div className="text-sm flex items-center gap-2">
+                            <Mail className="h-3 w-3" />
+                            {client.email}
+                          </div>
+                          <div className="text-sm text-muted-foreground flex items-center gap-2">
+                            <Phone className="h-3 w-3" />
+                            {client.phone}
+                          </div>
                         </div>
-                      </div>
-                    </TableCell>
-                    <TableCell className="hidden md:table-cell">
-                      <div className="flex flex-col">
-                        <span className="text-sm">{client.address}</span>
-                        <span className="text-sm text-muted-foreground">
-                          {client.city}, {client.postcode}
-                        </span>
-                        <span className="text-sm text-muted-foreground">{client.country}</span>
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-center">
-                      <Badge variant={client.applies_irpf ? "default" : "secondary"}>
-                        {client.applies_irpf ? "Sí" : "No"}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex justify-end gap-2">
-                        <Button variant="ghost" size="icon" onClick={() => openEditDialog(client)}>
-                          <Pencil className="h-4 w-4" />
-                          <span className="sr-only">Editar</span>
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="text-red-500 hover:text-red-500"
-                          onClick={() => openDeleteDialog(client)}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                          <span className="sr-only">Eliminar</span>
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))
+                      </TableCell>
+                      <TableCell className="hidden md:table-cell">
+                        <div className="flex flex-col">
+                          <span className="text-sm">{client.address}</span>
+                          <span className="text-sm text-muted-foreground">
+                            {client.city}, {client.postcode}
+                          </span>
+                          <span className="text-sm text-muted-foreground">{client.country}</span>
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-center">
+                        <Badge variant={client.applies_irpf ? "default" : "secondary"}>
+                          {client.applies_irpf ? "Sí" : "No"}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex justify-end gap-2">
+                          <Button variant="ghost" size="icon" onClick={() => openEditDialog(client)}>
+                            <Pencil className="h-4 w-4" />
+                            <span className="sr-only">Editar</span>
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="text-red-500 hover:text-red-500"
+                            onClick={() => openDeleteDialog(client)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                            <span className="sr-only">Eliminar</span>
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })
               )}
             </TableBody>
           </Table>
