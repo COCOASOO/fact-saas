@@ -3,7 +3,7 @@
 import * as React from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { ChevronLeft, ChevronRight, FileText, LayoutDashboard, Settings, Users } from 'lucide-react'
+import { ChevronLeft, ChevronRight, FileText, LayoutDashboard, Settings, Users,Building2 } from 'lucide-react'
 
 import { Button } from "@/components/ui/button"
 import { ScrollArea } from "@/components/ui/scroll-area"
@@ -27,6 +27,11 @@ const navItems: NavItem[] = [
     href: "/pages/dashboard/invoices",
     icon: FileText,
     label: "Facturas",
+  },
+  {
+    href: "/pages/dashboard/companies",
+    icon: Building2,
+    label: "Empresas",
   },
   {
     href: "/pages/dashboard/clients",
