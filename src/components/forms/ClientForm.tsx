@@ -1,48 +1,54 @@
-"use client"
+"use client";
 
-import { useState, useEffect, ChangeEvent, FormEvent } from "react"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { DialogFooter } from "@/components/ui/dialog"
-import { Card, CardContent } from "@/components/ui/card"
-import { Switch } from "@/components/ui/switch"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { getCompanies } from "@/app/routes/companies/route"
-import type { Company } from "@/app/routes/companies/route"
+import { useState, useEffect, ChangeEvent, FormEvent } from "react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { DialogFooter } from "@/components/ui/dialog";
+import { Card, CardContent } from "@/components/ui/card";
+import { Switch } from "@/components/ui/switch";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { getCompanies, getCompanyById } from "@/app/routes/companies/route";
+import type { Company } from "@/app/routes/companies/route";
 
 interface Client {
-  id: string
-  company_id: string
-  user_id: string
-  name: string
-  nif: string
-  address?: string
-  city?: string
-  postcode?: string
-  country: string
-  email?: string
-  phone?: string
-  applies_irpf: boolean
-  created_at?: string
+  id: string;
+  company_id: string;
+  user_id: string;
+  name: string;
+  nif: string;
+  address?: string;
+  city?: string;
+  postcode?: string;
+  country: string;
+  email?: string;
+  phone?: string;
+  applies_irpf: boolean;
+  created_at?: string;
 }
 
 interface ClientFormProps {
-  client?: Client
-  onSubmit: (client: Client) => void
-  onCancel: () => void
+  client?: Client;
+  onSubmit: (client: Client) => void;
+  onCancel: () => void;
 }
 
 interface FormErrors {
-  company_id?: string
-  name?: string
-  nif?: string
-  address?: string
-  city?: string
-  postcode?: string
-  country?: string
-  email?: string
-  phone?: string
+  company_id?: string;
+  name?: string;
+  nif?: string;
+  address?: string;
+  city?: string;
+  postcode?: string;
+  country?: string;
+  email?: string;
+  phone?: string;
 }
 
 // Default empty client
@@ -59,121 +65,136 @@ const emptyClient: Client = {
   email: "",
   phone: "",
   applies_irpf: false,
-}
+};
 
-export function ClientForm({ client = emptyClient, onSubmit, onCancel }: ClientFormProps) {
-  const [formData, setFormData] = useState<Client>(client)
-  const [errors, setErrors] = useState<FormErrors>({})
-  const [companies, setCompanies] = useState<Company[]>([])
+export function ClientForm({
+  client = emptyClient,
+  onSubmit,
+  onCancel,
+}: ClientFormProps) {
+  const [formData, setFormData] = useState<Client>(client);
+  const [errors, setErrors] = useState<FormErrors>({});
+  const [companies, setCompanies] = useState<Company[]>([]);
+  const [selectedCompany, setSelectedCompany] = useState<Company | undefined>();
 
   // Cargar empresas al montar el componente
   useEffect(() => {
     const loadCompanies = async () => {
       try {
-        const companiesData = await getCompanies()
-        setCompanies(companiesData)
+        const companiesData = await getCompanies();
+        setCompanies(companiesData);
       } catch (error) {
-        console.error('Error loading companies:', error)
+        console.error("Error loading companies:", error);
       }
-    }
-    loadCompanies()
-  }, [])
+    };
+    loadCompanies();
+  }, []);
 
   // Update form data when client prop changes
   useEffect(() => {
     if (client) {
-      setFormData(client)
+      setFormData(client);
     }
-  }, [client])
+  }, [client]);
 
   const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target
+    const { name, value } = e.target;
     setFormData((prev) => ({
       ...prev,
       [name]: value,
-    }))
+    }));
 
     // Clear error when field is edited
     if (errors[name as keyof FormErrors]) {
       setErrors((prev) => ({
         ...prev,
         [name]: undefined,
-      }))
+      }));
     }
-  }
+  };
 
   const validateForm = (): boolean => {
-    const newErrors: FormErrors = {}
+    const newErrors: FormErrors = {};
 
     if (!formData.company_id.trim()) {
-      newErrors.company_id = "La empresa es obligatoria"
+      newErrors.company_id = "La empresa es obligatoria";
     }
 
     if (!formData.name.trim()) {
-      newErrors.name = "El nombre es obligatorio"
+      newErrors.name = "El nombre es obligatorio";
     }
 
     if (!formData.nif.trim()) {
-      newErrors.nif = "El NIF es obligatorio"
-    } else if (!/^[A-Z0-9]{9}$/.test(formData.nif.toUpperCase())) {
-      newErrors.nif = "El formato del NIF no es válido"
+      newErrors.nif = "El NIF es obligatorio";
+    } else if (!/^[0-9A-Z]{9}$/.test(formData.nif.toUpperCase())) {
+      newErrors.nif = "El formato del NIF no es válido";
     }
 
     if (!formData.email?.trim()) {
-      newErrors.email = "El email es obligatorio"
+      newErrors.email = "El email es obligatorio";
     } else if (formData.email && !/\S+@\S+\.\S+/.test(formData.email)) {
-      newErrors.email = "El formato del email no es válido"
+      newErrors.email = "El formato del email no es válido";
     }
 
     if (!formData.phone?.trim()) {
-      newErrors.phone = "El teléfono es obligatorio"
-    } else if (formData.phone && !/^[0-9]{9}$/.test(formData.phone.replace(/\s/g, ''))) {
-      newErrors.phone = "El formato del teléfono no es válido"
+      newErrors.phone = "El teléfono es obligatorio";
+    } else if (
+      formData.phone &&
+      !/^[0-9]{9}$/.test(formData.phone.replace(/\s/g, ""))
+    ) {
+      newErrors.phone = "El formato del teléfono no es válido";
     }
 
     if (!formData.address?.trim()) {
-      newErrors.address = "La dirección es obligatoria"
+      newErrors.address = "La dirección es obligatoria";
     }
 
     if (!formData.city?.trim()) {
-      newErrors.city = "La ciudad es obligatoria"
+      newErrors.city = "La ciudad es obligatoria";
     }
 
     if (!formData.postcode?.trim()) {
-      newErrors.postcode = "El código postal es obligatorio"
+      newErrors.postcode = "El código postal es obligatorio";
     } else if (formData.postcode && !/^[0-9]{5}$/.test(formData.postcode)) {
-      newErrors.postcode = "El código postal debe tener 5 dígitos"
+      newErrors.postcode = "El código postal debe tener 5 dígitos";
     }
 
     if (!formData.country.trim()) {
-      newErrors.country = "El país es obligatorio"
+      newErrors.country = "El país es obligatorio";
     }
 
     if (!formData.company_id.trim()) {
-      newErrors.company_id = "La empresa es obligatoria"
+      newErrors.company_id = "La empresa es obligatoria";
     }
 
-    setErrors(newErrors)
-    return Object.keys(newErrors).length === 0
-  }
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
 
   const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
-    e.preventDefault()
+    e.preventDefault();
 
     if (validateForm()) {
-      onSubmit(formData)
+      onSubmit(formData);
     }
-  }
+  };
 
   // Actualizar NIF cuando se selecciona una empresa
-  const handleCompanyChange = (value: string) => {
-    const selectedCompany = companies.find(company => company.id === value)
-    setFormData(prev => ({
-      ...prev,
-      company_id: value,
-      nif: selectedCompany?.nif || ''
-    }))
-  }
+  const handleCompanyChange = async (value: string) => {
+    try {
+      const selectedCompanyData = await getCompanyById(value);
+      if (selectedCompanyData) {
+        setSelectedCompany(selectedCompanyData);
+        setFormData((prev) => ({
+          ...prev,
+          company_id: selectedCompanyData.id,
+        }));
+      }
+    } catch (error) {
+      console.error("Error fetching company:", error);
+    }
+  };
+  
 
   return (
     <form onSubmit={handleSubmit}>
@@ -211,10 +232,23 @@ export function ClientForm({ client = emptyClient, onSubmit, onCancel }: ClientF
                   <Input
                     id="nif"
                     name="nif"
-                    value={formData.nif}
+                    value={selectedCompany?.nif || ''}
                     readOnly
                     className="bg-muted"
                   />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="nif">NIF del cliente</Label>
+                  <Input
+                    id="nif"
+                    name="nif"
+                    value={formData.nif}
+                    onChange={handleChange}
+                    className={errors.email ? "border-red-500" : ""}
+                  />
+                  {errors.nif && (
+                    <p className="text-red-500 text-sm">{errors.nif}</p>
+                  )}
                 </div>
               </div>
             </div>
@@ -226,7 +260,7 @@ export function ClientForm({ client = emptyClient, onSubmit, onCancel }: ClientF
             <div className="space-y-4">
               <h3 className="text-lg font-medium">Información de Contacto</h3>
               <div className="grid gap-4">
-              <div className="grid gap-2">
+                <div className="grid gap-2">
                   <Label htmlFor="name">Nombre</Label>
                   <Input
                     id="name"
@@ -235,7 +269,9 @@ export function ClientForm({ client = emptyClient, onSubmit, onCancel }: ClientF
                     onChange={handleChange}
                     className={errors.name ? "border-red-500" : ""}
                   />
-                  {errors.name && <p className="text-red-500 text-sm">{errors.name}</p>}
+                  {errors.name && (
+                    <p className="text-red-500 text-sm">{errors.name}</p>
+                  )}
                 </div>
 
                 <div className="grid gap-2">
@@ -248,7 +284,9 @@ export function ClientForm({ client = emptyClient, onSubmit, onCancel }: ClientF
                     onChange={handleChange}
                     className={errors.email ? "border-red-500" : ""}
                   />
-                  {errors.email && <p className="text-red-500 text-sm">{errors.email}</p>}
+                  {errors.email && (
+                    <p className="text-red-500 text-sm">{errors.email}</p>
+                  )}
                 </div>
 
                 <div className="grid gap-2">
@@ -260,9 +298,10 @@ export function ClientForm({ client = emptyClient, onSubmit, onCancel }: ClientF
                     onChange={handleChange}
                     className={errors.phone ? "border-red-500" : ""}
                   />
-                  {errors.phone && <p className="text-red-500 text-sm">{errors.phone}</p>}
+                  {errors.phone && (
+                    <p className="text-red-500 text-sm">{errors.phone}</p>
+                  )}
                 </div>
-                
               </div>
             </div>
           </CardContent>
@@ -282,7 +321,9 @@ export function ClientForm({ client = emptyClient, onSubmit, onCancel }: ClientF
                     onChange={handleChange}
                     className={errors.address ? "border-red-500" : ""}
                   />
-                  {errors.address && <p className="text-red-500 text-sm">{errors.address}</p>}
+                  {errors.address && (
+                    <p className="text-red-500 text-sm">{errors.address}</p>
+                  )}
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
@@ -295,7 +336,9 @@ export function ClientForm({ client = emptyClient, onSubmit, onCancel }: ClientF
                       onChange={handleChange}
                       className={errors.city ? "border-red-500" : ""}
                     />
-                    {errors.city && <p className="text-red-500 text-sm">{errors.city}</p>}
+                    {errors.city && (
+                      <p className="text-red-500 text-sm">{errors.city}</p>
+                    )}
                   </div>
 
                   <div className="grid gap-2">
@@ -307,7 +350,9 @@ export function ClientForm({ client = emptyClient, onSubmit, onCancel }: ClientF
                       onChange={handleChange}
                       className={errors.postcode ? "border-red-500" : ""}
                     />
-                    {errors.postcode && <p className="text-red-500 text-sm">{errors.postcode}</p>}
+                    {errors.postcode && (
+                      <p className="text-red-500 text-sm">{errors.postcode}</p>
+                    )}
                   </div>
                 </div>
 
@@ -320,7 +365,9 @@ export function ClientForm({ client = emptyClient, onSubmit, onCancel }: ClientF
                     onChange={handleChange}
                     className={errors.country ? "border-red-500" : ""}
                   />
-                  {errors.country && <p className="text-red-500 text-sm">{errors.country}</p>}
+                  {errors.country && (
+                    <p className="text-red-500 text-sm">{errors.country}</p>
+                  )}
                 </div>
               </div>
             </div>
@@ -339,7 +386,9 @@ export function ClientForm({ client = emptyClient, onSubmit, onCancel }: ClientF
               <Switch
                 id="applies_irpf"
                 checked={formData.applies_irpf}
-                onCheckedChange={(checked) => setFormData((prev) => ({ ...prev, applies_irpf: checked }))}
+                onCheckedChange={(checked) =>
+                  setFormData((prev) => ({ ...prev, applies_irpf: checked }))
+                }
               />
             </div>
           </CardContent>
@@ -355,6 +404,5 @@ export function ClientForm({ client = emptyClient, onSubmit, onCancel }: ClientF
         </Button>
       </DialogFooter>
     </form>
-  )
+  );
 }
-
