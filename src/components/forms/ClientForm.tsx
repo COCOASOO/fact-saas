@@ -179,7 +179,6 @@ export function ClientForm({
     }
   };
 
-  // Actualizar NIF cuando se selecciona una empresa
   const handleCompanyChange = async (value: string) => {
     try {
       const selectedCompanyData = await getCompanyById(value);
@@ -237,6 +236,7 @@ export function ClientForm({
                     className="bg-muted"
                   />
                 </div>
+
                 <div className="grid gap-2">
                   <Label htmlFor="nif">NIF del cliente</Label>
                   <Input

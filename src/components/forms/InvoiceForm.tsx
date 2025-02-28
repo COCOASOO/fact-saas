@@ -21,7 +21,7 @@ import {
   calculateIrpfAmount,
   calculateTotalAmount,
 } from "@/lib/utils/invoice-calculations";
-import { getClients } from "@/app/routes/clients/route";
+import { getClientById, getClients } from "@/app/routes/clients/route";
 import { Client } from "@/app/types/client";
 
 interface InvoiceFormProps {
@@ -56,22 +56,7 @@ export function InvoiceForm({ invoice, onSubmit, onCancel }: InvoiceFormProps) {
   );
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [clients, setClients] = useState<Client[]>([]);
-  const [selectedClientId, setSelectedClientId] = useState<string | undefined>(
-    undefined
-  );
-
-  useEffect(() => {
-    const fetchClients = async () => {
-      const clientsData = await getClients();
-      setClients(clientsData);
-    };
-    fetchClients();
-  }, []);
-  useEffect(() => {
-    if (!selectedClientId) {
-      setFormData((prev) => ({ ...prev, client_id: "" }));
-    }
-  }, [selectedClientId]);
+  const [selectedClient, setSelectedClient] = useState<Client | undefined>();
 
   useEffect(() => {
     const loadClients = async () => {
@@ -122,6 +107,22 @@ export function InvoiceForm({ invoice, onSubmit, onCancel }: InvoiceFormProps) {
     }
   };
 
+  const handleClientChange = async (value: string) => {
+    try {
+      const selectedClientData = await getClientById(value);
+      if (selectedClientData) {
+        setSelectedClient(selectedClientData);
+        setFormData((prev) => ({
+          ...prev,
+          client_id: selectedClientData.id, // ← Actualiza client_id
+          company_id: selectedClientData.id, // ← Mantiene coherencia con la empresa
+        }));
+      }
+    } catch (error) {
+      console.error("Error fetching company:", error);
+    }
+  };
+
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
 
@@ -152,16 +153,6 @@ export function InvoiceForm({ invoice, onSubmit, onCancel }: InvoiceFormProps) {
       onSubmit(formData as Invoice);
     }
   };
-
-    // Actualizar NIF cuando se selecciona una empresa
-    const handleClientChange = (value: string) => {
-      const selectedClient = clients.find(client => client.id === value)
-      setFormData(prev => ({
-        ...prev,
-        client_id: value,
-        name: selectedClient?.name || ''
-      }))
-    }
 
   return (
     <form onSubmit={handleSubmit}>
@@ -239,29 +230,37 @@ export function InvoiceForm({ invoice, onSubmit, onCancel }: InvoiceFormProps) {
             <div className="space-y-4">
               <h3 className="text-lg font-medium">Cliente</h3>
               <div className="grid gap-4">
-              <div className="grid gap-2">
-                <Label htmlFor="client_id">Cliente</Label>
-                <Select
-                name="client_id"
-                value={formData.client_id}
-                onValueChange={handleClientChange}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecciona un cliente"/>
-                  </SelectTrigger>
-                  <SelectContent>
-                    {clients.map((client)=>(
-                      <SelectItem key={client.id} value={client.id}>
-                        {client.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                {errors.client_id && (
+                <div className="grid gap-2">
+                  <Label htmlFor="client_id">Cliente</Label>
+                  <Select
+                    name="client_id"
+                    value={formData.client_id}
+                    onValueChange={handleClientChange}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecciona un cliente" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {clients.map((client) => (
+                        <SelectItem key={client.id} value={client.id}>
+                          {client.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {errors.client_id && (
                     <p className="text-red-500 text-sm">{errors.client_id}</p>
                   )}
-              </div>
+                </div>
 
-               
+                <div className="grid gap-2">
+                  <Label htmlFor="nif">NIF del cliente</Label>
+                  <Input
+                    id="nif"
+                    name="nif"
+                    value={selectedClient?.nif || ""}
+                  />
+                </div>
               </div>
             </div>
           </CardContent>
