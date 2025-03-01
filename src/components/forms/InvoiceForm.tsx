@@ -115,8 +115,10 @@ export function InvoiceForm({ invoice, onSubmit, onCancel }: InvoiceFormProps) {
         setFormData((prev) => ({
           ...prev,
           client_id: selectedClientData.id, // ← Actualiza client_id
-          company_id: selectedClientData.id, // ← Mantiene coherencia con la empresa
+          company_id: selectedClientData.company_id, // ← Mantiene coherencia con la empresa
         }));
+        console.log(selectedClientData.id)
+        console.log(selectedClientData.company_id)
       }
     } catch (error) {
       console.error("Error fetching company:", error);
