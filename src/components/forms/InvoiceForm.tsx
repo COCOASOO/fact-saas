@@ -259,6 +259,11 @@ export function InvoiceForm({ invoice, onSubmit, onCancel }: InvoiceFormProps) {
                     id="nif"
                     name="nif"
                     value={selectedClient?.nif || ""}
+                    onChange={(e) =>
+                      setSelectedClient((prev) =>
+                        prev ? { ...prev, nif: e.target.value } : undefined
+                      )
+                    }
                   />
                 </div>
               </div>
