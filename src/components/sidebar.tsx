@@ -28,15 +28,16 @@ const navItems: NavItem[] = [
     icon: FileText,
     label: "Facturas",
   },
-  {
-    href: "/pages/dashboard/companies",
-    icon: Building2,
-    label: "Empresas",
-  },
+
   {
     href: "/pages/dashboard/clients",
     icon: Users,
     label: "Clientes",
+  },
+  {
+    href: "/pages/dashboard/companies",
+    icon: Building2,
+    label: "Datos empresa",
   },
   {
     href: "/pages/dashboard/settings",

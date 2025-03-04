@@ -14,7 +14,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { getCompanies, getCompanyById } from "@/app/routes/companies/route";
+import {
+  getCompanies,
+  getCompanyById,
+  getUserCompany,
+} from "@/app/routes/companies/route";
 import type { Company } from "@/app/routes/companies/route";
 
 interface Client {
@@ -74,15 +78,14 @@ export function ClientForm({
 }: ClientFormProps) {
   const [formData, setFormData] = useState<Client>(client);
   const [errors, setErrors] = useState<FormErrors>({});
-  const [companies, setCompanies] = useState<Company[]>([]);
-  const [selectedCompany, setSelectedCompany] = useState<Company | undefined>();
+  const [company, setCompany] = useState<Company>();
 
   // Cargar empresas al montar el componente
   useEffect(() => {
     const loadCompanies = async () => {
       try {
-        const companiesData = await getCompanies();
-        setCompanies(companiesData);
+        const companiesData = await getUserCompany();
+        setCompany(companiesData);
       } catch (error) {
         console.error("Error loading companies:", error);
       }
@@ -179,22 +182,6 @@ export function ClientForm({
     }
   };
 
-  const handleCompanyChange = async (value: string) => {
-    try {
-      const selectedCompanyData = await getCompanyById(value);
-      if (selectedCompanyData) {
-        setSelectedCompany(selectedCompanyData);
-        setFormData((prev) => ({
-          ...prev,
-          company_id: selectedCompanyData.id,
-        }));
-      }
-    } catch (error) {
-      console.error("Error fetching company:", error);
-    }
-  };
-  
-
   return (
     <form onSubmit={handleSubmit}>
       <div className="grid gap-6 py-4">
@@ -205,25 +192,12 @@ export function ClientForm({
               <div className="grid gap-4">
                 <div className="grid gap-2">
                   <Label htmlFor="company_id">Empresa</Label>
-                  <Select
-                    name="company_id"
-                    value={formData.company_id}
-                    onValueChange={handleCompanyChange}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecciona una empresa" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {companies.map((company) => (
-                        <SelectItem key={company.id} value={company.id}>
-                          {company.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  {errors.company_id && (
-                    <p className="text-red-500 text-sm">{errors.company_id}</p>
-                  )}
+                  <input type="hidden" name="company_id" value={company?.id} />
+                  <Input
+                    value={company?.name || "Cargando empresa..."}
+                    readOnly
+                    className="bg-muted"
+                  />
                 </div>
 
                 <div className="grid gap-2">
@@ -231,7 +205,7 @@ export function ClientForm({
                   <Input
                     id="nif"
                     name="nif"
-                    value={selectedCompany?.nif || ''}
+                    value={company?.nif || ""}
                     readOnly
                     className="bg-muted"
                   />
