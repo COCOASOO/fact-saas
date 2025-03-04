@@ -84,7 +84,7 @@ export function ClientForm({
   const [company, setCompany] = useState<Company>();
 
   useEffect(() => {
-    const loadCompanies = async () => {
+    const loadCompany = async () => {
       try {
         const companiesData = await getUserCompany();
         setCompany(companiesData);
@@ -97,7 +97,7 @@ export function ClientForm({
         console.error("Error loading companies:", error);
       }
     };
-    loadCompanies();
+    loadCompany();
   }, []);
   
 

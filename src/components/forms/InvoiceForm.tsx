@@ -23,20 +23,22 @@ import {
 } from "@/lib/utils/invoice-calculations";
 import { getClientById, getClients } from "@/app/routes/clients/route";
 import { Client } from "@/app/types/client";
+import { Company, getUserCompany } from "@/app/routes/companies/route";
+import { addInvoice } from "@/app/routes/invoices/route";
 
 interface InvoiceFormProps {
   invoice?: Invoice;
-  onSubmit: (invoice: Invoice) => void;
+  onSubmit: (invoice: Omit<Invoice, 'id' | 'user_id'>) => void;
   onCancel: () => void;
 }
 
-const emptyInvoice: InvoiceFormData = {
-  user_id: "",
+const emptyInvoice: Omit<Invoice, 'id' | 'user_id' | 'created_at' | 'updated_at'> = {
   client_id: "",
   company_id: "",
   date: new Date().toISOString().split("T")[0],
   invoice_number: "",
   status: "draft",
+  pdf_url: null,
   invoice_date: new Date().toISOString().split("T")[0],
   due_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
     .toISOString()
@@ -48,15 +50,42 @@ const emptyInvoice: InvoiceFormData = {
   irpf_rate: 15,
   irpf_amount: 0,
   total_amount: 0,
+  verifactu_xml: null,
+  verifactu_hash: null,
+  verifactu_signature: null,
+  verifactu_status: null,
+  verifactu_response: null,
 };
 
 export function InvoiceForm({ invoice, onSubmit, onCancel }: InvoiceFormProps) {
-  const [formData, setFormData] = useState<InvoiceFormData>(
-    invoice || emptyInvoice
+  const [formData, setFormData] = useState<typeof emptyInvoice>(
+    invoice ? {
+      ...emptyInvoice,
+      ...invoice,
+    } : emptyInvoice
   );
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [clients, setClients] = useState<Client[]>([]);
   const [selectedClient, setSelectedClient] = useState<Client | undefined>();
+  const [company, setCompany] = useState<Company>();
+
+  useEffect(() => {
+    const loadCompany = async () => {
+      try {
+        const companyData = await getUserCompany();
+        setCompany(companyData);
+
+        console.log("COMANY: ", companyData);
+        setFormData((prev) => ({
+          ...prev,
+          company_id: companyData?.id || prev.company_id,
+        }));
+      } catch (error) {
+        console.error("Error loading companies:", error);
+      }
+    };
+    loadCompany();
+  }, []);
 
   useEffect(() => {
     const loadClients = async () => {
@@ -117,8 +146,8 @@ export function InvoiceForm({ invoice, onSubmit, onCancel }: InvoiceFormProps) {
           client_id: selectedClientData.id, // ← Actualiza client_id
           company_id: selectedClientData.company_id, // ← Mantiene coherencia con la empresa
         }));
-        console.log(selectedClientData.id)
-        console.log(selectedClientData.company_id)
+        console.log(selectedClientData.id);
+        console.log(selectedClientData.company_id);
       }
     } catch (error) {
       console.error("Error fetching company:", error);
@@ -148,11 +177,23 @@ export function InvoiceForm({ invoice, onSubmit, onCancel }: InvoiceFormProps) {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (validateForm()) {
-      onSubmit(formData as Invoice);
+      try {
+        onSubmit({ ...formData, created_at: new Date().toISOString(), updated_at: new Date().toISOString() });
+      } catch (error) {
+        console.error("Error al guardar la factura:", error);
+        if (error instanceof Error) {
+          if (error.message.includes("número")) {
+            setErrors((prev) => ({
+              ...prev,
+              invoice_number: error.message,
+            }));
+          }
+        }
+      }
     }
   };
 
@@ -231,7 +272,7 @@ export function InvoiceForm({ invoice, onSubmit, onCancel }: InvoiceFormProps) {
           <CardContent className="p-6">
             <div className="space-y-4">
               <h3 className="text-lg font-medium">Cliente</h3>
-              <div className="grid gap-4">
+              <div className="grid grid-cols-2 gap-4">
                 <div className="grid gap-2">
                   <Label htmlFor="client_id">Cliente</Label>
                   <Select
@@ -256,16 +297,184 @@ export function InvoiceForm({ invoice, onSubmit, onCancel }: InvoiceFormProps) {
                 </div>
 
                 <div className="grid gap-2">
-                  <Label htmlFor="nif">NIF del cliente</Label>
+                  <Label htmlFor="c_nif">NIF</Label>
                   <Input
-                    id="nif"
-                    name="nif"
+                    id="c_nif"
+                    name="c_nif"
                     value={selectedClient?.nif || ""}
                     onChange={(e) =>
                       setSelectedClient((prev) =>
                         prev ? { ...prev, nif: e.target.value } : undefined
                       )
                     }
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="c_email">Email</Label>
+                  <Input
+                    id="c_email"
+                    name="c_email"
+                    value={selectedClient?.email || ""}
+                    onChange={(e) =>
+                      setSelectedClient((prev) =>
+                        prev ? { ...prev, nif: e.target.value } : undefined
+                      )
+                    }
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="c_phone">Teléfono</Label>
+                  <Input
+                    id="c_phone"
+                    name="c_phone"
+                    value={selectedClient?.phone || ""}
+                    onChange={(e) =>
+                      setSelectedClient((prev) =>
+                        prev ? { ...prev, nif: e.target.value } : undefined
+                      )
+                    }
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="c_address">Dirección</Label>
+                  <Input
+                    id="c_address"
+                    name="c_address"
+                    value={selectedClient?.address || ""}
+                    onChange={(e) =>
+                      setSelectedClient((prev) =>
+                        prev ? { ...prev, nif: e.target.value } : undefined
+                      )
+                    }
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="c_city">Ciudad</Label>
+                  <Input
+                    id="c_city"
+                    name="c_city"
+                    value={selectedClient?.city || ""}
+                    onChange={(e) =>
+                      setSelectedClient((prev) =>
+                        prev ? { ...prev, nif: e.target.value } : undefined
+                      )
+                    }
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="c_cp">Código postal</Label>
+                  <Input
+                    id="c_cp"
+                    name="c_cp"
+                    value={selectedClient?.postcode || ""}
+                    onChange={(e) =>
+                      setSelectedClient((prev) =>
+                        prev ? { ...prev, nif: e.target.value } : undefined
+                      )
+                    }
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="c_country">País</Label>
+                  <Input
+                    id="c_country"
+                    name="c_country"
+                    value={selectedClient?.country || ""}
+                    onChange={(e) =>
+                      setSelectedClient((prev) =>
+                        prev ? { ...prev, nif: e.target.value } : undefined
+                      )
+                    }
+                  />
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-6">
+            <div className="space-y-4">
+              <h3 className="text-lg font-medium">Información emisor</h3>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="grid gap-2">
+                  <Label htmlFor="company_id">Empresa</Label>
+                  <input type="hidden" name="company_id" value={company?.id} />
+                  <Input
+                    value={company?.name || "Cargando empresa..."}
+                    readOnly
+                    className="bg-muted"
+                  />
+                </div>
+
+                <div className="grid gap-2">
+                  <Label htmlFor="nif">NIF de la Empresa</Label>
+                  <Input
+                    id="nif"
+                    name="nif"
+                    value={company?.nif || ""}
+                    readOnly
+                    className="bg-muted"
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="cp">Código postal</Label>
+                  <Input
+                    id="cp"
+                    name="cp"
+                    value={company?.postcode || ""}
+                    readOnly
+                    className="bg-muted"
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="address">Dirección</Label>
+                  <Input
+                    id="address"
+                    name="address"
+                    value={company?.address || ""}
+                    readOnly
+                    className="bg-muted"
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="city">Ciudad</Label>
+                  <Input
+                    id="city"
+                    name="city"
+                    value={company?.city || ""}
+                    readOnly
+                    className="bg-muted"
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="country">País</Label>
+                  <Input
+                    id="country"
+                    name="country"
+                    value={company?.country || ""}
+                    readOnly
+                    className="bg-muted"
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="email">Email</Label>
+                  <Input
+                    id="email"
+                    name="email"
+                    value={company?.email || ""}
+                    readOnly
+                    className="bg-muted"
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="phone">Teléfono</Label>
+                  <Input
+                    id="phone"
+                    name="phone"
+                    value={company?.phone || ""}
+                    readOnly
+                    className="bg-muted"
                   />
                 </div>
               </div>

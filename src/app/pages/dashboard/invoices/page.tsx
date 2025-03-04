@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Plus, Pencil, Trash2, Search, Download, Building2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -19,6 +19,7 @@ import Link from "next/link"
 import { InvoiceForm } from "@/components/forms/InvoiceForm"
 import type { Invoice } from "@/app/types/invoice"
 import { formatCurrency, formatDate } from "@/lib/utils/invoice-calculations"
+import { getInvoices, updateInvoice, deleteInvoice, addInvoice } from "@/app/routes/invoices/route"
 
 // Mock data for demonstration
 const initialInvoices: Invoice[] = [
@@ -78,12 +79,25 @@ const getStatusText = (status: Invoice["status"]) => {
 }
 
 export default function InvoicesPage() {
-  const [invoices, setInvoices] = useState<Invoice[]>(initialInvoices)
+  const [invoices, setInvoices] = useState<Invoice[]>([])
   const [searchQuery, setSearchQuery] = useState("")
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
   const [currentInvoice, setCurrentInvoice] = useState<Invoice | null>(null)
+
+  // Load invoices on component mount
+  useEffect(() => {
+    const loadInvoices = async () => {
+      try {
+        const data = await getInvoices()
+        setInvoices(data)
+      } catch (error) {
+        console.error("Error loading invoices:", error)
+      }
+    }
+    loadInvoices()
+  }, [])
 
   // Filter invoices based on search query
   const filteredInvoices = invoices.filter((invoice) =>
@@ -91,23 +105,43 @@ export default function InvoicesPage() {
   )
 
   // Handle invoice creation
-  const handleCreateInvoice = (newInvoice: Invoice) => {
-    setInvoices([...invoices, newInvoice])
-    setIsCreateDialogOpen(false)
+  const handleCreateInvoice = async (newInvoice: Omit<Invoice, 'id' | 'user_id'>) => {
+    try {
+      const createdInvoice = await addInvoice(newInvoice)
+      setInvoices([...invoices, createdInvoice])
+      setIsCreateDialogOpen(false)
+    } catch (error) {
+      console.error("Error creating invoice:", error)
+      // Here you might want to show an error message to the user
+    }
   }
 
   // Handle invoice edit
-  const handleEditInvoice = (updatedInvoice: Invoice) => {
-    setInvoices(invoices.map((invoice) => (invoice.id === updatedInvoice.id ? updatedInvoice : invoice)))
-    setIsEditDialogOpen(false)
-    setCurrentInvoice(null)
+  const handleEditInvoice = async (updatedInvoice: Omit<Invoice, 'id' | 'user_id'>) => {
+    if (!currentInvoice) return
+    
+    try {
+      const updated = await updateInvoice(currentInvoice.id, updatedInvoice)
+      setInvoices(invoices.map((invoice) => (invoice.id === updated.id ? updated : invoice)))
+      setIsEditDialogOpen(false)
+      setCurrentInvoice(null)
+    } catch (error) {
+      console.error("Error updating invoice:", error)
+      // Here you might want to show an error message to the user
+    }
   }
 
   // Handle invoice deletion
-  const handleDeleteInvoice = (id: string) => {
-    setInvoices(invoices.filter((invoice) => invoice.id !== id))
-    setIsDeleteDialogOpen(false)
-    setCurrentInvoice(null)
+  const handleDeleteInvoice = async (id: string) => {
+    try {
+      await deleteInvoice(id)
+      setInvoices(invoices.filter((invoice) => invoice.id !== id))
+      setIsDeleteDialogOpen(false)
+      setCurrentInvoice(null)
+    } catch (error) {
+      console.error("Error deleting invoice:", error)
+      // Here you might want to show an error message to the user
+    }
   }
 
   return (
@@ -173,7 +207,7 @@ export default function InvoicesPage() {
                   <TableRow key={invoice.id}>
                     <TableCell className="font-medium">{invoice.invoice_number}</TableCell>
                     <TableCell>{formatDate(invoice.invoice_date)}</TableCell>
-                    <TableCell>Cliente Example</TableCell>
+                    <TableCell>{invoice.client?.name || 'Cliente no disponible'}</TableCell>
                     <TableCell className="text-right">{formatCurrency(invoice.subtotal)}</TableCell>
                     <TableCell className="text-right">{formatCurrency(invoice.tax_amount)}</TableCell>
                     <TableCell className="text-right">{formatCurrency(invoice.irpf_amount)}</TableCell>

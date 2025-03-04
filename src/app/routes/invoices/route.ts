@@ -1,47 +1,7 @@
 import { createClient } from "@/lib/supabase/supabaseClient"
+import type { Invoice } from "@/app/types/invoice"
 
-export interface Invoice {
-    id: string
-    user_id: string
-    client_id: string
-    company_id: string
-    date?: string
-    invoice_number: string
-    status?: 'pending' | 'paid' | 'cancelled'
-    pdf_url?: string
-    invoice_date: string
-    due_date?: string
-    currency?: string
-    verifactu_xml?: string
-    verifactu_hash?: string
-    verifactu_signature?: string
-    verifactu_status?: string
-    verifactu_response?: string
-    subtotal: number
-    tax_rate: number
-    tax_amount: number
-    irpf_rate: number
-    irpf_amount: number
-    total_amount: number
-}
-
-export interface CreateInvoiceDTO {
-    client_id: string
-    company_id: string
-    date?: string
-    invoice_number: string
-    status?: 'pending' | 'paid' | 'cancelled'
-    due_date?: string
-    currency?: string
-    subtotal: number
-    tax_rate: number
-    tax_amount: number
-    irpf_rate?: number
-    irpf_amount?: number
-    total_amount: number
-}
-
-export interface UpdateInvoiceDTO extends Partial<CreateInvoiceDTO> {}
+type UpdateInvoiceDTO = Partial<Omit<Invoice, 'id' | 'user_id'>>;
 
 const supabase = createClient()
 
@@ -77,9 +37,16 @@ export async function getInvoices() {
             throw error
         }
         
-        console.log('✅ Facturas encontradas:', invoices);
+        // Ensure dates are strings before returning
+        const formattedInvoices = invoices.map(invoice => ({
+            ...invoice,
+            created_at: new Date(invoice.created_at).toISOString(),
+            updated_at: new Date(invoice.updated_at).toISOString()
+        })) as Invoice[]
+        
+        console.log('✅ Facturas encontradas:', formattedInvoices);
         console.groupEnd();
-        return invoices as Invoice[]
+        return formattedInvoices
     } catch (error) {
         console.error('❌ Error en getInvoices:', error);
         console.groupEnd();
@@ -118,7 +85,7 @@ export async function getInvoiceById(id: string) {
     }
 }
 
-export async function addInvoice(invoice: CreateInvoiceDTO) {
+export async function addInvoice(invoice: Omit<Invoice, 'id' | 'user_id'>) {
     console.group('➕ addInvoice()');
     try {
         console.log('📝 Datos recibidos:', invoice);
