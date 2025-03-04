@@ -118,18 +118,45 @@ export default function InvoicesPage() {
 
   // Handle invoice edit
   const handleEditInvoice = async (updatedInvoice: Omit<Invoice, 'id' | 'user_id'>) => {
-    if (!currentInvoice) return
+    if (!currentInvoice) return;
     
     try {
-      const updated = await updateInvoice(currentInvoice.id, updatedInvoice)
-      setInvoices(invoices.map((invoice) => (invoice.id === updated.id ? updated : invoice)))
-      setIsEditDialogOpen(false)
-      setCurrentInvoice(null)
+      // Aseguramos que los valores numéricos estén redondeados a 2 decimales
+      const roundedInvoice = {
+        ...updatedInvoice,
+        subtotal: Number(updatedInvoice.subtotal.toFixed(2)),
+        tax_amount: Number(updatedInvoice.tax_amount.toFixed(2)),
+        irpf_amount: Number(updatedInvoice.irpf_amount.toFixed(2)),
+        total_amount: Number(updatedInvoice.total_amount.toFixed(2)),
+        tax_rate: Number(updatedInvoice.tax_rate.toFixed(2)),
+        irpf_rate: Number(updatedInvoice.irpf_rate.toFixed(2))
+      };
+
+      // Eliminamos campos virtuales y datos adicionales no necesarios
+      const { client, company, clients, ...cleanInvoiceData } = roundedInvoice as any;
+
+      const updated = await updateInvoice(currentInvoice.id, {
+        ...currentInvoice,
+        ...cleanInvoiceData,
+        updated_at: new Date().toISOString()
+      });
+
+      setInvoices(invoices.map((invoice) => 
+        invoice.id === updated.id ? updated : invoice
+      ));
+      setIsEditDialogOpen(false);
+      setCurrentInvoice(null);
     } catch (error) {
-      console.error("Error updating invoice:", error)
-      // Here you might want to show an error message to the user
+      console.error("Error updating invoice:", error);
+      // Aquí podrías agregar un manejo de errores más específico
+      if (error instanceof Error && error.message.includes('número')) {
+        // Manejar error de número de factura duplicado
+        alert('Ya existe una factura con este número');
+      } else {
+        alert('Error al actualizar la factura');
+      }
     }
-  }
+  };
 
   // Handle invoice deletion
   const handleDeleteInvoice = async (id: string) => {

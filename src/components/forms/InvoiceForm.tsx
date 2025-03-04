@@ -74,8 +74,6 @@ export function InvoiceForm({ invoice, onSubmit, onCancel }: InvoiceFormProps) {
       try {
         const companyData = await getUserCompany();
         setCompany(companyData);
-
-        console.log("COMANY: ", companyData);
         setFormData((prev) => ({
           ...prev,
           company_id: companyData?.id || prev.company_id,
@@ -99,18 +97,26 @@ export function InvoiceForm({ invoice, onSubmit, onCancel }: InvoiceFormProps) {
     loadClients();
   }, []);
 
+  useEffect(() => {
+    if (invoice?.client_id) {
+      const loadClientData = async () => {
+        try {
+          const clientData = await getClientById(invoice.client_id);
+          setSelectedClient(clientData);
+          console.log("Cliente cargado:", clientData);
+        } catch (error) {
+          console.error("Error loading client data:", error);
+        }
+      };
+      loadClientData();
+    }
+  }, [invoice]);
+
   // Update calculations when relevant fields change
   useEffect(() => {
-    const taxAmount = calculateTaxAmount(formData.subtotal, formData.tax_rate);
-    const irpfAmount = calculateIrpfAmount(
-      formData.subtotal,
-      formData.irpf_rate
-    );
-    const totalAmount = calculateTotalAmount(
-      formData.subtotal,
-      taxAmount,
-      irpfAmount
-    );
+    const taxAmount = Number((calculateTaxAmount(formData.subtotal, formData.tax_rate)).toFixed(2));
+    const irpfAmount = Number((calculateIrpfAmount(formData.subtotal, formData.irpf_rate)).toFixed(2));
+    const totalAmount = Number((calculateTotalAmount(formData.subtotal, taxAmount, irpfAmount)).toFixed(2));
 
     setFormData((prev) => ({
       ...prev,
@@ -124,9 +130,14 @@ export function InvoiceForm({ invoice, onSubmit, onCancel }: InvoiceFormProps) {
     name: keyof InvoiceFormData,
     value: string | number
   ) => {
+    // Round numerical values to 2 decimal places
+    const processedValue = typeof value === 'number' 
+      ? Number(value.toFixed(2))
+      : value;
+
     setFormData((prev) => ({
       ...prev,
-      [name]: value,
+      [name]: processedValue,
     }));
     if (errors[name]) {
       setErrors((prev) => {
@@ -143,14 +154,12 @@ export function InvoiceForm({ invoice, onSubmit, onCancel }: InvoiceFormProps) {
         setSelectedClient(selectedClientData);
         setFormData((prev) => ({
           ...prev,
-          client_id: selectedClientData.id, // ← Actualiza client_id
-          company_id: selectedClientData.company_id, // ← Mantiene coherencia con la empresa
+          client_id: selectedClientData.id,
+          company_id: selectedClientData.company_id,
         }));
-        console.log(selectedClientData.id);
-        console.log(selectedClientData.company_id);
       }
     } catch (error) {
-      console.error("Error fetching company:", error);
+      console.error("Error fetching client:", error);
     }
   };
 
@@ -317,7 +326,7 @@ export function InvoiceForm({ invoice, onSubmit, onCancel }: InvoiceFormProps) {
                     value={selectedClient?.email || ""}
                     onChange={(e) =>
                       setSelectedClient((prev) =>
-                        prev ? { ...prev, nif: e.target.value } : undefined
+                        prev ? { ...prev, email: e.target.value } : undefined
                       )
                     }
                   />
@@ -330,7 +339,7 @@ export function InvoiceForm({ invoice, onSubmit, onCancel }: InvoiceFormProps) {
                     value={selectedClient?.phone || ""}
                     onChange={(e) =>
                       setSelectedClient((prev) =>
-                        prev ? { ...prev, nif: e.target.value } : undefined
+                        prev ? { ...prev, phone: e.target.value } : undefined
                       )
                     }
                   />
@@ -343,7 +352,7 @@ export function InvoiceForm({ invoice, onSubmit, onCancel }: InvoiceFormProps) {
                     value={selectedClient?.address || ""}
                     onChange={(e) =>
                       setSelectedClient((prev) =>
-                        prev ? { ...prev, nif: e.target.value } : undefined
+                        prev ? { ...prev, address: e.target.value } : undefined
                       )
                     }
                   />
@@ -356,7 +365,7 @@ export function InvoiceForm({ invoice, onSubmit, onCancel }: InvoiceFormProps) {
                     value={selectedClient?.city || ""}
                     onChange={(e) =>
                       setSelectedClient((prev) =>
-                        prev ? { ...prev, nif: e.target.value } : undefined
+                        prev ? { ...prev, city: e.target.value } : undefined
                       )
                     }
                   />
@@ -369,7 +378,7 @@ export function InvoiceForm({ invoice, onSubmit, onCancel }: InvoiceFormProps) {
                     value={selectedClient?.postcode || ""}
                     onChange={(e) =>
                       setSelectedClient((prev) =>
-                        prev ? { ...prev, nif: e.target.value } : undefined
+                        prev ? { ...prev, postcode: e.target.value } : undefined
                       )
                     }
                   />
@@ -382,7 +391,7 @@ export function InvoiceForm({ invoice, onSubmit, onCancel }: InvoiceFormProps) {
                     value={selectedClient?.country || ""}
                     onChange={(e) =>
                       setSelectedClient((prev) =>
-                        prev ? { ...prev, nif: e.target.value } : undefined
+                        prev ? { ...prev, country: e.target.value } : undefined
                       )
                     }
                   />

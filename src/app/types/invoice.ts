@@ -6,9 +6,9 @@ export interface Invoice {
   created_at: string;
   user_id: string;
   client_id: string;
-  client?:Client,
+  client?: Client | null;
   company_id: string;
-  company?:Company,
+  company?: Company | null;
   date: string;
   invoice_number: string;
   status: "draft" | "pending" | "paid" | "cancelled";
@@ -29,6 +29,8 @@ export interface Invoice {
   verifactu_response: string | null;
   updated_at: string;
 }
+
+export type InvoiceDB = Omit<Invoice, 'client' | 'company'>;
 
 export interface InvoiceFormData
   extends Omit<

@@ -44,15 +44,19 @@ export async function getClients() {
 }
 
 export async function getClientById(id: string) {
+    const { data: { user } } = await supabase.auth.getUser();
+    
+    if (!user) throw new Error('No authenticated user');
+
     const { data: client, error } = await supabase
         .from('clients')
         .select('*')
         .eq('id', id)
-        .eq('user_id', (await supabase.auth.getUser()).data.user?.id)
-        .single()
+        .eq('user_id', user.id)
+        .single();
 
-    if (error) throw error
-    return client as Client
+    if (error) throw error;
+    return client;
 }
 
 export async function addClient(client: CreateClientDTO) {

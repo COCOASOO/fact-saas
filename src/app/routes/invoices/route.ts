@@ -1,8 +1,6 @@
 import { createClient } from "@/lib/supabase/supabaseClient"
 import type { Invoice } from "@/app/types/invoice"
 
-type UpdateInvoiceDTO = Partial<Omit<Invoice, 'id' | 'user_id'>>;
-
 const supabase = createClient()
 
 async function getCurrentUserId() {
@@ -141,7 +139,7 @@ export async function addInvoice(invoice: Omit<Invoice, 'id' | 'user_id'>) {
     }
 }
 
-export async function updateInvoice(id: string, invoice: UpdateInvoiceDTO) {
+export async function updateInvoice(id: string, invoice: Invoice) {
     console.group(`📝 updateInvoice(${id})`);
     try {
         console.log('Datos a actualizar:', invoice);
@@ -162,16 +160,34 @@ export async function updateInvoice(id: string, invoice: UpdateInvoiceDTO) {
             }
         }
         
-        const { data, error } = await supabase
+        // Eliminamos los campos virtuales y cualquier campo adicional no deseado
+        const { client, company, clients, ...invoiceData } = invoice as any;
+        
+        // Asegurarnos de que solo enviamos los campos que existen en la base de datos
+        const cleanedInvoiceData: Partial<Invoice> = {
+            client_id: invoiceData.client_id,
+            company_id: invoiceData.company_id,
+            date: invoiceData.date,
+            invoice_number: invoiceData.invoice_number,
+            status: invoiceData.status,
+            invoice_date: invoiceData.invoice_date,
+            due_date: invoiceData.due_date,
+            currency: invoiceData.currency,
+            subtotal: invoiceData.subtotal,
+            tax_rate: invoiceData.tax_rate,
+            tax_amount: invoiceData.tax_amount,
+            irpf_rate: invoiceData.irpf_rate,
+            irpf_amount: invoiceData.irpf_amount,
+            total_amount: invoiceData.total_amount
+        };
+
+        console.log("Datos limpios a enviar:", cleanedInvoiceData);
+        
+        const { error } = await supabase
             .from('invoices')
-            .update(invoice)
+            .update(cleanedInvoiceData)
             .eq('id', id)
             .eq('user_id', userId)
-            .select(`
-                *,
-                clients!inner(*)
-            `)
-            .single()
 
         if (error) {
             console.error('❌ Error al actualizar factura:', error);
@@ -181,9 +197,19 @@ export async function updateInvoice(id: string, invoice: UpdateInvoiceDTO) {
             throw error
         }
 
-        console.log('✅ Factura actualizada:', data);
+        // Si necesitamos los datos actualizados, hacemos una consulta separada
+        const { data: updatedInvoice } = await supabase
+            .from('invoices')
+            .select(`
+                *,
+                clients!inner(*)
+            `)
+            .eq('id', id)
+            .single()
+
+        console.log('✅ Factura actualizada:', updatedInvoice);
         console.groupEnd();
-        return data as Invoice
+        return updatedInvoice as Invoice
     } catch (error) {
         console.error('❌ Error en updateInvoice:', error);
         console.groupEnd();
