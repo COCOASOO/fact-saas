@@ -76,22 +76,30 @@ export function ClientForm({
   onSubmit,
   onCancel,
 }: ClientFormProps) {
-  const [formData, setFormData] = useState<Client>(client);
-  const [errors, setErrors] = useState<FormErrors>({});
+
+  const [formData, setFormData] = useState<Client>({
+    ...emptyClient,
+    ...client, 
+  });  const [errors, setErrors] = useState<FormErrors>({});
   const [company, setCompany] = useState<Company>();
 
-  // Cargar empresas al montar el componente
   useEffect(() => {
     const loadCompanies = async () => {
       try {
         const companiesData = await getUserCompany();
         setCompany(companiesData);
+  
+        setFormData((prev) => ({
+          ...prev,
+          company_id: companiesData?.id || prev.company_id,
+        }));
       } catch (error) {
         console.error("Error loading companies:", error);
       }
     };
     loadCompanies();
   }, []);
+  
 
   // Update form data when client prop changes
   useEffect(() => {
@@ -175,12 +183,12 @@ export function ClientForm({
   };
 
   const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-
+    e.preventDefault();  
     if (validateForm()) {
       onSubmit(formData);
     }
   };
+  
 
   return (
     <form onSubmit={handleSubmit}>
