@@ -28,6 +28,8 @@ export interface Invoice {
   verifactu_status: string | null;
   verifactu_response: string | null;
   updated_at: string;
+  series_id: string;
+  rectifies_invoice_id?: string | null;
 }
 
 export type InvoiceDB = Omit<Invoice, 'client' | 'company'>;

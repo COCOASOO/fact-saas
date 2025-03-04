@@ -3,7 +3,7 @@
 import * as React from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { ChevronLeft, ChevronRight, FileText, LayoutDashboard, Settings, Users,Building2 } from 'lucide-react'
+import { ChevronLeft, ChevronRight, FileText, LayoutDashboard, Settings, Users,Building2, ListOrdered } from 'lucide-react'
 
 import { Button } from "@/components/ui/button"
 import { ScrollArea } from "@/components/ui/scroll-area"
@@ -43,6 +43,11 @@ const navItems: NavItem[] = [
     href: "/pages/dashboard/settings",
     icon: Settings,
     label: "Configuración",
+  },
+  {
+    href: "/pages/dashboard/invoice-series",
+    icon: ListOrdered,
+    label: "Series de Facturación",
   },
 ]
 

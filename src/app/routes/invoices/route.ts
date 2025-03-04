@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/supabaseClient"
 import type { Invoice } from "@/app/types/invoice"
+import { getNextInvoiceNumber } from "../invoice_series/route";
 
 const supabase = createClient()
 
@@ -84,57 +85,47 @@ export async function getInvoiceById(id: string) {
 }
 
 export async function addInvoice(invoice: Omit<Invoice, 'id' | 'user_id'>) {
-    console.group('➕ addInvoice()');
     try {
-        console.log('📝 Datos recibidos:', invoice);
-        const userId = await getCurrentUserId()
+        const userId = await getCurrentUserId();
         
-        // Verificar que el cliente existe y pertenece al usuario
-        const { data: client, error: clientError } = await supabase
-            .from('clients')
-            .select('*')
-            .eq('id', invoice.client_id)
-            .eq('user_id', userId)
-            .single()
-
-        if (clientError || !client) {
-            console.error('❌ Cliente no encontrado o no autorizado');
-            throw new Error('Cliente no encontrado o no autorizado')
+        // Obtenemos la serie por defecto si no se especifica una
+        let seriesId = invoice.series_id;
+        if (!seriesId) {
+            const { data: defaultSeries } = await supabase
+                .from('invoice_series')
+                .select('*')
+                .eq('user_id', userId)
+                .eq('default', true)
+                .eq('type', 'standard')
+                .single();
+            
+            if (!defaultSeries) {
+                throw new Error('No hay una serie de facturación por defecto configurada');
+            }
+            seriesId = defaultSeries.id;
         }
-        
+
+        // Generamos el siguiente número de factura
+        const invoiceNumber = await getNextInvoiceNumber(seriesId);
+
+        // Creamos la factura con el nuevo número
         const invoiceData = {
             ...invoice,
             user_id: userId,
-            currency: invoice.currency || 'EUR',
-            status: invoice.status || 'pending',
-            irpf_rate: invoice.irpf_rate || 0.00,
-            irpf_amount: invoice.irpf_amount || 0.00
-        }
-        console.log('📝 Datos a insertar:', invoiceData);
+            invoice_number: invoiceNumber,
+            series_id: seriesId
+        };
 
         const { data, error } = await supabase
             .from('invoices')
             .insert([invoiceData])
-            .select(`
-                *,
-                clients!inner(*)
-            `)
-            .single()
+            .select()
+            .single();
 
-        if (error) {
-            console.error('❌ Error al crear factura:', error);
-            if (error.code === '23505') {
-                throw new Error('Ya existe una factura con este número')
-            }
-            throw error
-        }
-
-        console.log('✅ Factura creada:', data);
-        console.groupEnd();
-        return data as Invoice
+        if (error) throw error;
+        return data;
     } catch (error) {
-        console.error('❌ Error en addInvoice:', error);
-        console.groupEnd();
+        console.error('Error creating invoice:', error);
         throw error;
     }
 }
@@ -160,32 +151,12 @@ export async function updateInvoice(id: string, invoice: Invoice) {
             }
         }
         
-        // Eliminamos los campos virtuales y cualquier campo adicional no deseado
-        const { client, company, clients, ...invoiceData } = invoice as any;
-        
-        // Asegurarnos de que solo enviamos los campos que existen en la base de datos
-        const cleanedInvoiceData: Partial<Invoice> = {
-            client_id: invoiceData.client_id,
-            company_id: invoiceData.company_id,
-            date: invoiceData.date,
-            invoice_number: invoiceData.invoice_number,
-            status: invoiceData.status,
-            invoice_date: invoiceData.invoice_date,
-            due_date: invoiceData.due_date,
-            currency: invoiceData.currency,
-            subtotal: invoiceData.subtotal,
-            tax_rate: invoiceData.tax_rate,
-            tax_amount: invoiceData.tax_amount,
-            irpf_rate: invoiceData.irpf_rate,
-            irpf_amount: invoiceData.irpf_amount,
-            total_amount: invoiceData.total_amount
-        };
-
-        console.log("Datos limpios a enviar:", cleanedInvoiceData);
-        
+        // Eliminamos los campos virtuales antes de enviar a la BD
+        const { client, company, ...invoiceData } = invoice;
+        console.log("invoiceData", invoiceData)
         const { error } = await supabase
             .from('invoices')
-            .update(cleanedInvoiceData)
+            .update(invoiceData)
             .eq('id', id)
             .eq('user_id', userId)
 

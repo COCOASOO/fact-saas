@@ -23,37 +23,6 @@ import { getInvoices, updateInvoice, deleteInvoice, addInvoice } from "@/app/rou
 import { getClients } from "@/app/routes/clients/route"
 import { Client } from "@/app/types/client"
 
-// Mock data for demonstration
-const initialInvoices: Invoice[] = [
-  {
-    id: "550e8400-e29b-41d4-a716-446655440000",
-    created_at: "2023-01-15T08:30:00Z",
-    user_id: "user123",
-    client_id: "client123",
-    company_id: "company123",
-    date: "2023-01-15",
-    invoice_number: "FAC-2023-001",
-    status: "paid",
-    pdf_url: "https://example.com/invoice1.pdf",
-    invoice_date: "2023-01-15",
-    due_date: "2023-02-14",
-    currency: "EUR",
-    subtotal: 1000.0,
-    tax_rate: 21,
-    tax_amount: 210.0,
-    irpf_rate: 15,
-    irpf_amount: 150.0,
-    total_amount: 1060.0,
-    verifactu_xml: null,
-    verifactu_hash: null,
-    verifactu_signature: null,
-    verifactu_status: null,
-    verifactu_response: null,
-    updated_at: "2023-01-15T08:30:00Z",
-  },
-  // Add more mock invoices as needed
-]
-
 const getStatusColor = (status: Invoice["status"]) => {
   switch (status) {
     case "paid":

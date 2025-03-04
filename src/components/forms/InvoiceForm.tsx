@@ -55,6 +55,7 @@ const emptyInvoice: Omit<Invoice, 'id' | 'user_id' | 'created_at' | 'updated_at'
   verifactu_signature: null,
   verifactu_status: null,
   verifactu_response: null,
+  series_id: ""
 };
 
 export function InvoiceForm({ invoice, onSubmit, onCancel }: InvoiceFormProps) {
