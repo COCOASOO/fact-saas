@@ -20,6 +20,8 @@ import { InvoiceForm } from "@/components/forms/InvoiceForm"
 import type { Invoice } from "@/app/types/invoice"
 import { formatCurrency, formatDate } from "@/lib/utils/invoice-calculations"
 import { getInvoices, updateInvoice, deleteInvoice, addInvoice } from "@/app/routes/invoices/route"
+import { getClients } from "@/app/routes/clients/route"
+import { Client } from "@/app/types/client"
 
 // Mock data for demonstration
 const initialInvoices: Invoice[] = [
@@ -80,23 +82,28 @@ const getStatusText = (status: Invoice["status"]) => {
 
 export default function InvoicesPage() {
   const [invoices, setInvoices] = useState<Invoice[]>([])
+  const [clients, setClients] = useState<Client[]>([])
   const [searchQuery, setSearchQuery] = useState("")
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
   const [currentInvoice, setCurrentInvoice] = useState<Invoice | null>(null)
 
-  // Load invoices on component mount
+  // Load invoices and clients on component mount
   useEffect(() => {
-    const loadInvoices = async () => {
+    const loadData = async () => {
       try {
-        const data = await getInvoices()
-        setInvoices(data)
+        const [invoicesData, clientsData] = await Promise.all([
+          getInvoices(),
+          getClients()
+        ])
+        setInvoices(invoicesData)
+        setClients(clientsData)
       } catch (error) {
-        console.error("Error loading invoices:", error)
+        console.error("Error loading data:", error)
       }
     }
-    loadInvoices()
+    loadData()
   }, [])
 
   // Filter invoices based on search query
@@ -147,16 +154,10 @@ export default function InvoicesPage() {
       setIsEditDialogOpen(false);
       setCurrentInvoice(null);
     } catch (error) {
-      console.error("Error updating invoice:", error);
-      // Aquí podrías agregar un manejo de errores más específico
-      if (error instanceof Error && error.message.includes('número')) {
-        // Manejar error de número de factura duplicado
-        alert('Ya existe una factura con este número');
-      } else {
-        alert('Error al actualizar la factura');
-      }
+      console.error("Error updating invoice:", error)
+      // Here you might want to show an error message to the user
     }
-  };
+  }
 
   // Handle invoice deletion
   const handleDeleteInvoice = async (id: string) => {
@@ -170,6 +171,12 @@ export default function InvoicesPage() {
       // Here you might want to show an error message to the user
     }
   }
+
+  // Obtener el cliente para una factura
+  const getClientName = (clientId: string) => {
+    const client = clients.find(c => c.id === clientId);
+    return client?.name || 'Cliente no disponible';
+  };
 
   return (
     <div className="h-full flex-1 flex-col space-y-8 p-8 md:flex">
@@ -234,7 +241,7 @@ export default function InvoicesPage() {
                   <TableRow key={invoice.id}>
                     <TableCell className="font-medium">{invoice.invoice_number}</TableCell>
                     <TableCell>{formatDate(invoice.invoice_date)}</TableCell>
-                    <TableCell>{invoice.client?.name || 'Cliente no disponible'}</TableCell>
+                    <TableCell>{getClientName(invoice.client_id)}</TableCell>
                     <TableCell className="text-right">{formatCurrency(invoice.subtotal)}</TableCell>
                     <TableCell className="text-right">{formatCurrency(invoice.tax_amount)}</TableCell>
                     <TableCell className="text-right">{formatCurrency(invoice.irpf_amount)}</TableCell>
