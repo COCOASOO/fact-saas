@@ -163,7 +163,7 @@ export function InvoiceSeriesDialog({
               </ul>
               <p><em>Ejemplos:</em></p>
               <ul className="list-disc pl-4 space-y-1">
-                <li>FACT-%%%-### → FACT-25-001</li>
+                <li>FACT-%%-### → FACT-25-001</li>
                 <li>FACT-%%%%-### → FACT-2025-001</li>
               </ul>
             </div>
