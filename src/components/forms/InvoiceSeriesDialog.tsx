@@ -70,21 +70,33 @@ export function InvoiceSeriesDialog({
     
     if (!formData.serie_format) {
       newErrors.serie_format = 'El formato es requerido';
-    } else if (!/.*#/.test(formData.serie_format)) {
-      newErrors.serie_format = 'El formato debe incluir al menos un # para la numeración';
     } else {
-      // Verificar formato duplicado
-      try {
-        const isDuplicate = await checkDuplicateFormat(
-          formData.serie_format, 
-          series?.id // Excluir la serie actual en caso de edición
-        );
-        if (isDuplicate) {
-          newErrors.serie_format = 'Ya existe una serie con este formato';
+      // Validar que no contenga espacios
+      if (/\s/.test(formData.serie_format)) {
+        newErrors.serie_format = 'El formato no puede contener espacios';
+      }
+      // Validar que contenga exactamente 2 o 4 % para el año
+      else if (!/(%%|%%%%)/.test(formData.serie_format)) {
+        newErrors.serie_format = 'El formato debe incluir exactamente 2 o 4 símbolos % para el año (ejemplo: %% o %%%%)';
+      }
+      // Validar que contenga al menos tres #
+      else if ((formData.serie_format.match(/#/g) || []).length < 3) {
+        newErrors.serie_format = 'El formato debe incluir al menos tres # para la numeración';
+      }
+      // Verificar formato duplicado si no hay otros errores
+      else {
+        try {
+          const isDuplicate = await checkDuplicateFormat(
+            formData.serie_format, 
+            series?.id
+          );
+          if (isDuplicate) {
+            newErrors.serie_format = 'Ya existe una serie con este formato';
+          }
+        } catch (error) {
+          console.error('Error checking duplicate format:', error);
+          newErrors.serie_format = 'Error al validar el formato';
         }
-      } catch (error) {
-        console.error('Error checking duplicate format:', error);
-        newErrors.serie_format = 'Error al validar el formato';
       }
     }
 
@@ -135,12 +147,26 @@ export function InvoiceSeriesDialog({
               id="serie_format"
               value={formData.serie_format}
               onChange={(e) => setFormData({ ...formData, serie_format: e.target.value })}
-              placeholder="Ej: FACT-###"
+              placeholder="Ej: FACT-%%%%-###"
               disabled={hasInvoices}
             />
             {errors.serie_format && (
               <p className="text-sm text-red-500">{errors.serie_format}</p>
             )}
+            <div className="text-sm text-muted-foreground space-y-1">
+              <p><strong>Formato de serie:</strong></p>
+              <ul className="list-disc pl-4 space-y-1">
+                <li><code>%%</code>: Últimos dos dígitos del año (ej: 25)</li>
+                <li><code>%%%%</code>: Año completo (ej: 2025)</li>
+                <li><code>###</code>: Número secuencial (mínimo 3 dígitos)</li>
+                <li>No se permiten espacios en el formato</li>
+              </ul>
+              <p><em>Ejemplos:</em></p>
+              <ul className="list-disc pl-4 space-y-1">
+                <li>FACT-%%%-### → FACT-25-001</li>
+                <li>FACT-%%%%-### → FACT-2025-001</li>
+              </ul>
+            </div>
           </div>
 
           <div className="space-y-2">
