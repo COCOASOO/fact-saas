@@ -17,7 +17,7 @@ import {
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { CreateInvoiceSeriesDTO, InvoiceSeries } from '@/app/types/invoice-series';
-import { addInvoiceSeries } from '@/app/routes/invoice_series/route';
+import { addInvoiceSeries, updateInvoiceSeries } from '@/app/routes/invoice_series/route';
 import { createClient } from '@/lib/supabase/supabaseClient';
 
 const supabase = createClient();
@@ -80,7 +80,11 @@ export function InvoiceSeriesDialog({
     if (!validateForm()) return;
 
     try {
-      await addInvoiceSeries(formData);
+      if (series) {
+        await updateInvoiceSeries(series.id, formData);
+      } else {
+        await addInvoiceSeries(formData);
+      }
       onSuccess();
     } catch (error) {
       console.error('Error saving series:', error);

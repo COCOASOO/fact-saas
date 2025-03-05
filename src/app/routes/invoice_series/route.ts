@@ -91,3 +91,39 @@ export async function getNextInvoiceNumber(seriesId: string): Promise<string> {
     throw error;
   }
 }
+
+export async function updateInvoiceSeries(id: string, series: CreateInvoiceSeriesDTO) {
+  try {
+
+    // Si es serie por defecto, actualizar las otras series del mismo tipo
+    if (series.default) {
+      const { error: updateError } = await supabase
+        .from("invoice_series")
+        .update({ default: false })
+        .eq("user_id", (await supabase.auth.getUser()).data.user?.id)
+        .eq("type", series.type)
+        .neq("id", id); // No actualizar la serie actual
+
+      if (updateError) throw updateError;
+    }
+
+    const { data, error } = await supabase
+      .from("invoice_series")
+      .update({
+        ...series,
+        user_id: (await supabase.auth.getUser()).data.user?.id,
+        invoice_number: series.invoice_number || 0,
+        default: series.default ?? false,
+        type: series.type || null
+      })
+      .eq("id", id)
+      .select()
+      .single();
+
+    if (error) throw error;
+    return data as InvoiceSeries;
+  } catch (error) {
+    console.error("Error updating invoice series:", error);
+    throw error;
+  }
+}
