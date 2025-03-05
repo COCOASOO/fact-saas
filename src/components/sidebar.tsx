@@ -1,20 +1,29 @@
-"use client"
+"use client";
 
-import * as React from "react"
-import Link from "next/link"
-import { usePathname } from "next/navigation"
-import { ChevronLeft, ChevronRight, FileText, LayoutDashboard, Settings, Users,Building2, ListOrdered } from 'lucide-react'
+import * as React from "react";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import {
+  ChevronLeft,
+  ChevronRight,
+  FileText,
+  LayoutDashboard,
+  Settings,
+  Users,
+  Building2,
+  ListOrdered,
+} from "lucide-react";
 
-import { Button } from "@/components/ui/button"
-import { ScrollArea } from "@/components/ui/scroll-area"
-import { Sheet, SheetContent } from "@/components/ui/sheet"
-import { cn } from "@/lib/utils/utils"
-import "./../app/styles.css"
+import { Button } from "@/components/ui/button";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { cn } from "@/lib/utils/utils";
+import "./../app/styles.css";
 
 interface NavItem {
-  href: string
-  icon: React.ElementType
-  label: string
+  href: string;
+  icon: React.ElementType;
+  label: string;
 }
 
 const navItems: NavItem[] = [
@@ -28,7 +37,11 @@ const navItems: NavItem[] = [
     icon: FileText,
     label: "Facturas",
   },
-
+  {
+    href: "/pages/dashboard/invoice-series",
+    icon: ListOrdered,
+    label: "Series de Facturación",
+  },
   {
     href: "/pages/dashboard/clients",
     icon: Users,
@@ -44,35 +57,30 @@ const navItems: NavItem[] = [
     icon: Settings,
     label: "Configuración",
   },
-  {
-    href: "/pages/dashboard/invoice-series",
-    icon: ListOrdered,
-    label: "Series de Facturación",
-  },
-]
+];
 
 interface SidebarProps {
-  className?: string
-  onToggle?: (expanded: boolean) => void
+  className?: string;
+  onToggle?: (expanded: boolean) => void;
 }
 
 export function Sidebar({ className, onToggle }: SidebarProps) {
-  const [isExpanded, setIsExpanded] = React.useState(true)
-  const pathname = usePathname()
+  const [isExpanded, setIsExpanded] = React.useState(true);
+  const pathname = usePathname();
 
   React.useEffect(() => {
-    const stored = localStorage.getItem("sidebarExpanded")
+    const stored = localStorage.getItem("sidebarExpanded");
     if (stored !== null) {
-      setIsExpanded(stored === "true")
+      setIsExpanded(stored === "true");
     }
-  }, [])
+  }, []);
 
   const toggleSidebar = () => {
-    const newState = !isExpanded
-    setIsExpanded(newState)
-    localStorage.setItem("sidebarExpanded", String(newState))
-    onToggle?.(newState)
-  }
+    const newState = !isExpanded;
+    setIsExpanded(newState);
+    localStorage.setItem("sidebarExpanded", String(newState));
+    onToggle?.(newState);
+  };
 
   return (
     <nav
@@ -121,12 +129,12 @@ export function Sidebar({ className, onToggle }: SidebarProps) {
         </ScrollArea>
       </div>
     </nav>
-  )
+  );
 }
 
 export function MobileSidebar() {
-  const [open, setOpen] = React.useState(false)
-  const pathname = usePathname()
+  const [open, setOpen] = React.useState(false);
+  const pathname = usePathname();
 
   return (
     <Sheet open={open} onOpenChange={setOpen}>
@@ -141,12 +149,12 @@ export function MobileSidebar() {
       </Button>
       <SheetContent side="left" className="w-64 p-0">
         <div className="flex h-full flex-col gap-4">
-          <div className="flex h-16 items-center border-b px-6">
-            <div className="flex items-center gap-2">
+          <SheetHeader className="h-16 border-b px-6">
+            <SheetTitle className="flex items-center gap-2">
               <FileText className="h-6 w-6" />
               <span className="font-semibold">Facturación</span>
-            </div>
-          </div>
+            </SheetTitle>
+          </SheetHeader>
           <ScrollArea className="flex-1 px-3">
             <div className="flex flex-col gap-2">
               {navItems.map((item) => (
@@ -168,5 +176,5 @@ export function MobileSidebar() {
         </div>
       </SheetContent>
     </Sheet>
-  )
+  );
 }
