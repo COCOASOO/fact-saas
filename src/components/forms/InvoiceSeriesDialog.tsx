@@ -17,7 +17,7 @@ import {
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { CreateInvoiceSeriesDTO, InvoiceSeries } from '@/app/types/invoice-series';
-import { addInvoiceSeries, updateInvoiceSeries } from '@/app/routes/invoice_series/route';
+import { addInvoiceSeries, updateInvoiceSeries, checkSeriesHasInvoices, checkDuplicateFormat } from '@/app/routes/invoice_series/route';
 import { createClient } from '@/lib/supabase/supabaseClient';
 
 const supabase = createClient();
@@ -42,6 +42,7 @@ export function InvoiceSeriesDialog({
     invoice_number: 0,
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [hasInvoices, setHasInvoices] = useState(false);
 
   useEffect(() => {
     if (series) {
@@ -51,6 +52,8 @@ export function InvoiceSeriesDialog({
         default: series.default,
         invoice_number: series.invoice_number,
       });
+      // Verificar si la serie tiene facturas
+      checkSeriesHasInvoices(series.id).then(setHasInvoices);
     } else {
       setFormData({
         serie_format: '',
@@ -58,16 +61,31 @@ export function InvoiceSeriesDialog({
         default: false,
         invoice_number: 0,
       });
+      setHasInvoices(false);
     }
   }, [series]);
 
-  const validateForm = () => {
+  const validateForm = async () => {
     const newErrors: Record<string, string> = {};
     
     if (!formData.serie_format) {
       newErrors.serie_format = 'El formato es requerido';
     } else if (!/.*#/.test(formData.serie_format)) {
       newErrors.serie_format = 'El formato debe incluir al menos un # para la numeración';
+    } else {
+      // Verificar formato duplicado
+      try {
+        const isDuplicate = await checkDuplicateFormat(
+          formData.serie_format, 
+          series?.id // Excluir la serie actual en caso de edición
+        );
+        if (isDuplicate) {
+          newErrors.serie_format = 'Ya existe una serie con este formato';
+        }
+      } catch (error) {
+        console.error('Error checking duplicate format:', error);
+        newErrors.serie_format = 'Error al validar el formato';
+      }
     }
 
     setErrors(newErrors);
@@ -77,7 +95,7 @@ export function InvoiceSeriesDialog({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!validateForm()) return;
+    if (!(await validateForm())) return;
 
     try {
       if (series) {
@@ -88,6 +106,11 @@ export function InvoiceSeriesDialog({
       onSuccess();
     } catch (error) {
       console.error('Error saving series:', error);
+      if (error instanceof Error) {
+        setErrors({
+          serie_format: error.message
+        });
+      }
     }
   };
 
@@ -98,6 +121,11 @@ export function InvoiceSeriesDialog({
           <DialogTitle>
             {series ? 'Editar Serie' : 'Nueva Serie'}
           </DialogTitle>
+          {hasInvoices && (
+            <p className="text-sm text-yellow-600">
+              Esta serie contiene facturas. Solo se puede modificar si es la serie por defecto.
+            </p>
+          )}
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -108,6 +136,7 @@ export function InvoiceSeriesDialog({
               value={formData.serie_format}
               onChange={(e) => setFormData({ ...formData, serie_format: e.target.value })}
               placeholder="Ej: FACT-###"
+              disabled={hasInvoices}
             />
             {errors.serie_format && (
               <p className="text-sm text-red-500">{errors.serie_format}</p>
@@ -119,6 +148,7 @@ export function InvoiceSeriesDialog({
             <Select
               value={formData.type}
               onValueChange={(value) => setFormData({ ...formData, type: value as 'standard' | 'rectifying' })}
+              disabled={hasInvoices}
             >
               <SelectTrigger>
                 <SelectValue />
