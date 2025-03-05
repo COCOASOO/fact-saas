@@ -7,6 +7,7 @@ export type InvoiceSeries = {
   type: 'standard' | 'rectifying';
   created_at: string;
   has_invoices?: boolean;
+  last_invoice_number?: string | null;
 };
 
 export type CreateInvoiceSeriesDTO = Omit<InvoiceSeries, 'id' | 'created_at' | 'user_id' | 'has_invoices'>;

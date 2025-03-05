@@ -9,13 +9,26 @@ const supabase = createClient();
 
 export async function getInvoiceSeries() {
   try {
-    const { data, error } = await supabase
+    const userId = (await supabase.auth.getUser()).data.user?.id;
+    const { data: series, error } = await supabase
       .from("invoice_series")
       .select("*")
-      .eq("user_id", (await supabase.auth.getUser()).data.user?.id);
+      .eq("user_id", userId);
 
     if (error) throw error;
-    return data as InvoiceSeries[];
+
+    // Obtener el último número de factura para cada serie
+    const seriesWithLastNumber = await Promise.all(
+      series.map(async (serie) => {
+        const lastNumber = await getLastInvoiceNumber(serie.id);
+        return {
+          ...serie,
+          last_invoice_number: lastNumber
+        };
+      })
+    );
+
+    return seriesWithLastNumber;
   } catch (error) {
     console.error("Error getting invoice series:", error);
     throw error;
@@ -201,5 +214,29 @@ export async function checkDuplicateFormat(format: string, excludeId?: string) {
   } catch (error) {
     console.error("Error checking duplicate format:", error);
     throw error;
+  }
+}
+
+export async function getLastInvoiceNumber(seriesId: string): Promise<string | null> {
+  try {
+    const { data, error } = await supabase
+      .from('invoices')
+      .select('invoice_number')
+      .eq('series_id', seriesId)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .single();
+
+    if (error) {
+      if (error.code === 'PGRST116') { // No data found
+        return null;
+      }
+      throw error;
+    }
+
+    return data?.invoice_number || null;
+  } catch (error) {
+    console.error("Error getting last invoice number:", error);
+    return null;
   }
 }

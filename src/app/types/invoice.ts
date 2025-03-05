@@ -11,7 +11,7 @@ export interface Invoice {
   company?: Company | null;
   date: string;
   invoice_number: string;
-  status: "draft" | "pending" | "paid" | "cancelled";
+  status: "draft" | "final" | "submitted";
   pdf_url: string | null;
   invoice_date: string;
   due_date: string;

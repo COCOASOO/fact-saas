@@ -22,28 +22,25 @@ import { formatCurrency, formatDate } from "@/lib/utils/invoice-calculations"
 import { getInvoices, updateInvoice, deleteInvoice, addInvoice } from "@/app/routes/invoices/route"
 import { getClients } from "@/app/routes/clients/route"
 import { Client } from "@/app/types/client"
+import { toast } from "sonner"
 
 const getStatusColor = (status: Invoice["status"]) => {
   switch (status) {
-    case "paid":
+    case "final":
       return "bg-green-100 text-green-800"
-    case "pending":
-      return "bg-yellow-100 text-yellow-800"
-    case "cancelled":
-      return "bg-red-100 text-red-800"
+    case "submitted":
+      return "bg-blue-100 text-blue-800"
     default:
-      return "bg-gray-100 text-gray-800"
+      return "bg-yellow-100 text-yellow-800"
   }
 }
 
 const getStatusText = (status: Invoice["status"]) => {
   switch (status) {
-    case "paid":
-      return "Pagada"
-    case "pending":
-      return "Pendiente"
-    case "cancelled":
-      return "Cancelada"
+    case "final":
+      return "Definitiva"
+    case "submitted":
+      return "Presentada"
     default:
       return "Borrador"
   }
@@ -93,59 +90,30 @@ export default function InvoicesPage() {
   }
 
   // Handle invoice edit
-  const handleEditInvoice = async (updatedInvoice: Omit<Invoice, 'id' | 'user_id'>) => {
-    if (!currentInvoice) return;
-    
-    try {
-      // Aseguramos que los valores numéricos estén redondeados a 2 decimales
-      const roundedInvoice = {
-        ...updatedInvoice,
-        subtotal: Number(updatedInvoice.subtotal.toFixed(2)),
-        tax_amount: Number(updatedInvoice.tax_amount.toFixed(2)),
-        irpf_amount: Number(updatedInvoice.irpf_amount.toFixed(2)),
-        total_amount: Number(updatedInvoice.total_amount.toFixed(2)),
-        tax_rate: Number(updatedInvoice.tax_rate.toFixed(2)),
-        irpf_rate: Number(updatedInvoice.irpf_rate.toFixed(2))
-      };
-
-      // Eliminamos campos virtuales y datos adicionales no necesarios
-      const { client, company, clients, ...cleanInvoiceData } = roundedInvoice as any;
-
-      const updated = await updateInvoice(currentInvoice.id, {
-        ...currentInvoice,
-        ...cleanInvoiceData,
-        updated_at: new Date().toISOString()
-      });
-
-      setInvoices(invoices.map((invoice) => 
-        invoice.id === updated.id ? updated : invoice
-      ));
-      setIsEditDialogOpen(false);
-      setCurrentInvoice(null);
-    } catch (error) {
-      console.error("Error updating invoice:", error)
-      // Here you might want to show an error message to the user
+  const handleEditInvoice = async (invoice: Invoice) => {
+    if (invoice.status !== "draft") {
+      toast.error("Solo se pueden editar facturas en estado borrador")
+      return
     }
+    setCurrentInvoice(invoice)
+    setIsEditDialogOpen(true)
   }
 
   // Handle invoice deletion
-  const handleDeleteInvoice = async (id: string) => {
-    try {
-      await deleteInvoice(id)
-      setInvoices(invoices.filter((invoice) => invoice.id !== id))
-      setIsDeleteDialogOpen(false)
-      setCurrentInvoice(null)
-    } catch (error) {
-      console.error("Error deleting invoice:", error)
-      // Here you might want to show an error message to the user
+  const handleDeleteInvoice = async (invoice: Invoice) => {
+    if (invoice.status !== "draft") {
+      toast.error("Solo se pueden eliminar facturas en estado borrador")
+      return
     }
+    setCurrentInvoice(invoice)
+    setIsDeleteDialogOpen(true)
   }
 
   // Obtener el cliente para una factura
   const getClientName = (clientId: string) => {
-    const client = clients.find(c => c.id === clientId);
-    return client?.name || 'Cliente no disponible';
-  };
+    const client = clients.find(c => c.id === clientId)
+    return client?.name || 'Cliente no disponible'
+  }
 
   return (
     <div className="h-full flex-1 flex-col space-y-8 p-8 md:flex">
@@ -228,29 +196,27 @@ export default function InvoicesPage() {
                             </a>
                           </Button>
                         )}
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => {
-                            setCurrentInvoice(invoice)
-                            setIsEditDialogOpen(true)
-                          }}
-                        >
-                          <Pencil className="h-4 w-4" />
-                          <span className="sr-only">Editar</span>
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="text-red-500 hover:text-red-500"
-                          onClick={() => {
-                            setCurrentInvoice(invoice)
-                            setIsDeleteDialogOpen(true)
-                          }}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                          <span className="sr-only">Eliminar</span>
-                        </Button>
+                        {invoice.status === "draft" && (
+                          <>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => handleEditInvoice(invoice)}
+                            >
+                              <Pencil className="h-4 w-4" />
+                              <span className="sr-only">Editar</span>
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="text-red-500 hover:text-red-500"
+                              onClick={() => handleDeleteInvoice(invoice)}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                              <span className="sr-only">Eliminar</span>
+                            </Button>
+                          </>
+                        )}
                       </div>
                     </TableCell>
                   </TableRow>
@@ -271,7 +237,7 @@ export default function InvoicesPage() {
           {currentInvoice && (
             <InvoiceForm
               invoice={currentInvoice}
-              onSubmit={handleEditInvoice}
+              onSubmit={(updatedInvoice) => handleEditInvoice({ ...updatedInvoice, id: currentInvoice.id, user_id: currentInvoice.user_id })}
               onCancel={() => setIsEditDialogOpen(false)}
             />
           )}
@@ -292,7 +258,7 @@ export default function InvoicesPage() {
             <Button variant="outline" onClick={() => setIsDeleteDialogOpen(false)}>
               Cancelar
             </Button>
-            <Button variant="destructive" onClick={() => currentInvoice && handleDeleteInvoice(currentInvoice.id)}>
+            <Button variant="destructive" onClick={() => currentInvoice && handleDeleteInvoice(currentInvoice)}>
               Eliminar Factura
             </Button>
           </DialogFooter>

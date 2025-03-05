@@ -104,7 +104,8 @@ export default function InvoiceSeriesPage() {
             <TableRow>
               <TableHead>Formato</TableHead>
               <TableHead>Tipo</TableHead>
-              <TableHead>Número Actual</TableHead>
+              <TableHead>Cantidad de Facturas</TableHead>
+              <TableHead>Última Factura</TableHead>
               <TableHead>Por Defecto</TableHead>
               <TableHead className="text-right">Acciones</TableHead>
             </TableRow>
@@ -117,6 +118,7 @@ export default function InvoiceSeriesPage() {
                   {serie.type === 'standard' ? 'Estándar' : 'Rectificativa'}
                 </TableCell>
                 <TableCell>{serie.invoice_number}</TableCell>
+                <TableCell>{serie.last_invoice_number || 'Sin facturas'}</TableCell>
                 <TableCell>{serie.default ? "Sí" : "No"}</TableCell>
                 <TableCell className="text-right">
                   <div className="flex justify-end gap-2">

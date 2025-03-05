@@ -25,6 +25,8 @@ import { getClientById, getClients } from "@/app/routes/clients/route";
 import { Client } from "@/app/types/client";
 import { Company, getUserCompany } from "@/app/routes/companies/route";
 import { addInvoice } from "@/app/routes/invoices/route";
+import { getInvoiceSeries } from '@/app/routes/invoice_series/route';
+import { InvoiceSeries } from '@/app/types/invoice-series';
 
 interface InvoiceFormProps {
   invoice?: Invoice;
@@ -36,7 +38,6 @@ const emptyInvoice: Omit<Invoice, 'id' | 'user_id' | 'created_at' | 'updated_at'
   client_id: "",
   company_id: "",
   date: new Date().toISOString().split("T")[0],
-  invoice_number: "",
   status: "draft",
   pdf_url: null,
   invoice_date: new Date().toISOString().split("T")[0],
@@ -55,7 +56,8 @@ const emptyInvoice: Omit<Invoice, 'id' | 'user_id' | 'created_at' | 'updated_at'
   verifactu_signature: null,
   verifactu_status: null,
   verifactu_response: null,
-  series_id: ""
+  series_id: "",
+  invoice_number: ""
 };
 
 export function InvoiceForm({ invoice, onSubmit, onCancel }: InvoiceFormProps) {
@@ -69,6 +71,8 @@ export function InvoiceForm({ invoice, onSubmit, onCancel }: InvoiceFormProps) {
   const [clients, setClients] = useState<Client[]>([]);
   const [selectedClient, setSelectedClient] = useState<Client | undefined>();
   const [company, setCompany] = useState<Company>();
+  const [series, setSeries] = useState<InvoiceSeries[]>([]);
+  const [selectedSeries, setSelectedSeries] = useState<string>("");
 
   useEffect(() => {
     const loadCompany = async () => {
@@ -113,7 +117,26 @@ export function InvoiceForm({ invoice, onSubmit, onCancel }: InvoiceFormProps) {
     }
   }, [invoice]);
 
-  // Update calculations when relevant fields change
+  useEffect(() => {
+    const loadSeries = async () => {
+      try {
+        const seriesData = await getInvoiceSeries();
+        setSeries(seriesData);
+        
+        if (!selectedSeries) {
+          const defaultSeries = seriesData.find(s => s.default && s.type === 'standard');
+          if (defaultSeries) {
+            setSelectedSeries(defaultSeries.id);
+            setFormData(prev => ({ ...prev, series_id: defaultSeries.id }));
+          }
+        }
+      } catch (error) {
+        console.error("Error loading series:", error);
+      }
+    };
+    loadSeries();
+  }, []);
+
   useEffect(() => {
     const taxAmount = Number((calculateTaxAmount(formData.subtotal, formData.tax_rate)).toFixed(2));
     const irpfAmount = Number((calculateIrpfAmount(formData.subtotal, formData.irpf_rate)).toFixed(2));
@@ -131,7 +154,6 @@ export function InvoiceForm({ invoice, onSubmit, onCancel }: InvoiceFormProps) {
     name: keyof InvoiceFormData,
     value: string | number
   ) => {
-    // Round numerical values to 2 decimal places
     const processedValue = typeof value === 'number' 
       ? Number(value.toFixed(2))
       : value;
@@ -166,10 +188,6 @@ export function InvoiceForm({ invoice, onSubmit, onCancel }: InvoiceFormProps) {
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
-
-    if (!formData.invoice_number) {
-      newErrors.invoice_number = "El número de factura es obligatorio";
-    }
 
     if (!formData.client_id) {
       newErrors.client_id = "El cliente es obligatorio";
@@ -209,70 +227,43 @@ export function InvoiceForm({ invoice, onSubmit, onCancel }: InvoiceFormProps) {
 
   return (
     <form onSubmit={handleSubmit}>
-      <div className="grid gap-6 py-4  ">
+      <div className="grid gap-6 py-4">
         <Card>
           <CardContent className="p-6">
             <div className="space-y-4">
               <h3 className="text-lg font-medium">Información Básica</h3>
               <div className="grid gap-4">
-                <div className="grid grid-cols-2 gap-4">
+                {!invoice && (
                   <div className="grid gap-2">
-                    <Label htmlFor="invoice_number">Número de Factura</Label>
-                    <Input
-                      id="invoice_number"
-                      value={formData.invoice_number}
-                      onChange={(e) =>
-                        handleChange("invoice_number", e.target.value)
-                      }
-                      className={errors.invoice_number ? "border-red-500" : ""}
-                    />
-                    {errors.invoice_number && (
-                      <p className="text-red-500 text-sm">
-                        {errors.invoice_number}
-                      </p>
-                    )}
-                  </div>
-                  <div className="grid gap-2">
-                    <Label htmlFor="status">Estado</Label>
+                    <Label htmlFor="series_id">Serie de Facturación</Label>
                     <Select
-                      value={formData.status}
-                      onValueChange={(value) => handleChange("status", value)}
+                      value={selectedSeries}
+                      onValueChange={(value) => {
+                        setSelectedSeries(value);
+                        setFormData(prev => ({ ...prev, series_id: value }));
+                      }}
                     >
                       <SelectTrigger>
-                        <SelectValue placeholder="Seleccionar estado" />
+                        <SelectValue placeholder="Seleccionar serie" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="draft">Borrador</SelectItem>
-                        <SelectItem value="pending">Pendiente</SelectItem>
-                        <SelectItem value="paid">Pagada</SelectItem>
-                        <SelectItem value="cancelled">Cancelada</SelectItem>
+                        {series
+                          .filter(s => s.type === 'standard')
+                          .map((s) => (
+                            <SelectItem key={s.id} value={s.id}>
+                              {s.serie_format} {s.default ? "(Por defecto)" : ""}
+                            </SelectItem>
+                          ))}
                       </SelectContent>
                     </Select>
                   </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
+                )}
+                {invoice && (
                   <div className="grid gap-2">
-                    <Label htmlFor="invoice_date">Fecha de Factura</Label>
-                    <Input
-                      id="invoice_date"
-                      type="date"
-                      value={formData.invoice_date}
-                      onChange={(e) =>
-                        handleChange("invoice_date", e.target.value)
-                      }
-                    />
+                    <Label>Número de Factura</Label>
+                    <Input value={invoice.invoice_number} disabled />
                   </div>
-                  <div className="grid gap-2">
-                    <Label htmlFor="due_date">Fecha de Vencimiento</Label>
-                    <Input
-                      id="due_date"
-                      type="date"
-                      value={formData.due_date}
-                      onChange={(e) => handleChange("due_date", e.target.value)}
-                    />
-                  </div>
-                </div>
+                )}
               </div>
             </div>
           </CardContent>
