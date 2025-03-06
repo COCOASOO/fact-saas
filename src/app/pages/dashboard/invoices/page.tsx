@@ -99,8 +99,21 @@ export default function InvoicesPage() {
     setIsEditDialogOpen(true)
   }
 
-  // Handle invoice deletion
-  const handleDeleteInvoice = async (invoice: Invoice) => {
+  // Handle invoice deletion confirmation
+  const handleDeleteConfirmation = async (invoice: Invoice) => {
+    try {
+      await deleteInvoice(invoice.id)
+      setInvoices(invoices.filter(i => i.id !== invoice.id))
+      setIsDeleteDialogOpen(false)
+      toast.success("Factura eliminada correctamente")
+    } catch (error) {
+      console.error("Error deleting invoice:", error)
+      toast.error("Error al eliminar la factura")
+    }
+  }
+
+  // Handle delete button click (opens dialog)
+  const handleDeleteClick = (invoice: Invoice) => {
     if (invoice.status !== "draft") {
       toast.error("Solo se pueden eliminar facturas en estado borrador")
       return
@@ -210,7 +223,7 @@ export default function InvoicesPage() {
                               variant="ghost"
                               size="icon"
                               className="text-red-500 hover:text-red-500"
-                              onClick={() => handleDeleteInvoice(invoice)}
+                              onClick={() => handleDeleteClick(invoice)}
                             >
                               <Trash2 className="h-4 w-4" />
                               <span className="sr-only">Eliminar</span>
@@ -258,7 +271,7 @@ export default function InvoicesPage() {
             <Button variant="outline" onClick={() => setIsDeleteDialogOpen(false)}>
               Cancelar
             </Button>
-            <Button variant="destructive" onClick={() => currentInvoice && handleDeleteInvoice(currentInvoice)}>
+            <Button variant="destructive" onClick={() => currentInvoice && handleDeleteConfirmation(currentInvoice)}>
               Eliminar Factura
             </Button>
           </DialogFooter>

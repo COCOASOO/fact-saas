@@ -55,17 +55,7 @@ export function SaasNavbar() {
   }
 
   return (
-    <div className="flex flex-1 items-center justify-between">
-      <nav className="flex items-center gap-4">
-        <Link
-          href="/pages/dashboard"
-          className="text-sm text-muted-foreground hover:text-primary"
-        >
-          Dashboard
-        </Link>
-        <Separator orientation="vertical" className="h-3" />
-        <span className="text-sm text-muted-foreground">{user.email}</span>
-      </nav>
+    <div className="flex flex-1 justify-end">
       <Button
         variant="destructive"
         size="sm"

@@ -10,21 +10,34 @@ const supabase = createClient();
 export async function getInvoiceSeries() {
   try {
     const userId = (await supabase.auth.getUser()).data.user?.id;
+    if (!userId) {
+      throw new Error("Usuario no autenticado");
+    }
+
     const { data: series, error } = await supabase
       .from("invoice_series")
       .select("*")
       .eq("user_id", userId);
 
     if (error) throw error;
+    if (!series) return [];
 
     // Obtener el último número de factura para cada serie
     const seriesWithLastNumber = await Promise.all(
       series.map(async (serie) => {
-        const lastNumber = await getLastInvoiceNumber(serie.id);
-        return {
-          ...serie,
-          last_invoice_number: lastNumber
-        };
+        try {
+          const lastNumber = await getLastInvoiceNumber(serie.id);
+          return {
+            ...serie,
+            last_invoice_number: lastNumber
+          };
+        } catch (error) {
+          console.error(`Error getting last number for series ${serie.id}:`, error);
+          return {
+            ...serie,
+            last_invoice_number: null
+          };
+        }
       })
     );
 
@@ -80,19 +93,44 @@ export async function getNextInvoiceNumber(seriesId: string): Promise<string> {
 
     if (error) throw error;
 
-    // Incrementamos el número de factura
-    const nextNumber = series.invoice_number + 1;
+    // Obtener todas las facturas de esta serie ordenadas por número
+    const { data: invoices, error: invoicesError } = await supabase
+      .from('invoices')
+      .select('invoice_number')
+      .eq('series_id', seriesId)
+      .order('invoice_number');
 
-    // Actualizamos el contador en la base de datos
-    const { error: updateError } = await supabase
-      .from("invoice_series")
-      .update({ invoice_number: nextNumber })
-      .eq("id", seriesId);
+    if (invoicesError) throw invoicesError;
 
-    if (updateError) throw updateError;
+    // Encontrar el primer hueco en la numeración o usar el siguiente número
+    let nextNumber = 1;
+    if (invoices && invoices.length > 0) {
+      const usedNumbers = invoices.map(inv => parseInt(inv.invoice_number));
+      while (usedNumbers.includes(nextNumber)) {
+        nextNumber++;
+      }
+    }
 
-    // Formateamos el número según el formato de la serie
-    const formattedNumber = series.serie_format.replace(
+    // Actualizamos el contador en la base de datos si el nuevo número es mayor
+    if (nextNumber > series.invoice_number) {
+      const { error: updateError } = await supabase
+        .from("invoice_series")
+        .update({ invoice_number: nextNumber })
+        .eq("id", seriesId);
+
+      if (updateError) throw updateError;
+    }
+
+    // Obtenemos el año actual
+    const currentYear = new Date().getFullYear();
+    
+    // Primero reemplazamos los símbolos de año
+    let formattedNumber = series.serie_format
+      .replace('%%%%', currentYear.toString())
+      .replace('%%', currentYear.toString().slice(-2));
+
+    // Luego reemplazamos los # con el número de factura
+    formattedNumber = formattedNumber.replace(
       /#+/g,
       nextNumber
         .toString()
@@ -116,6 +154,29 @@ export async function checkSeriesHasInvoices(seriesId: string): Promise<boolean>
   return count ? count > 0 : false;
 }
 
+export async function updateSeriesInvoiceCount(seriesId: string) {
+  try {
+    const { count, error } = await supabase
+      .from('invoices')
+      .select('*', { count: 'exact', head: true })
+      .eq('series_id', seriesId);
+
+    if (error) throw error;
+
+    const { error: updateError } = await supabase
+      .from('invoice_series')
+      .update({ invoice_number: count || 0 })
+      .eq('id', seriesId);
+
+    if (updateError) throw updateError;
+
+    return count || 0;
+  } catch (error) {
+    console.error('Error updating series invoice count:', error);
+    throw error;
+  }
+}
+
 export async function deleteInvoiceSeries(id: string) {
   try {
     const { data: series } = await supabase
@@ -134,8 +195,14 @@ export async function deleteInvoiceSeries(id: string) {
     }
 
     // Verificar si tiene facturas asociadas
-    const hasInvoices = await checkSeriesHasInvoices(id);
-    if (hasInvoices) {
+    const { count, error: countError } = await supabase
+      .from('invoices')
+      .select('*', { count: 'exact', head: true })
+      .eq('series_id', id);
+
+    if (countError) throw countError;
+
+    if (count && count > 0) {
       throw new Error("No se puede eliminar una serie que contiene facturas");
     }
 
@@ -221,20 +288,22 @@ export async function getLastInvoiceNumber(seriesId: string): Promise<string | n
   try {
     const { data, error } = await supabase
       .from('invoices')
-      .select('invoice_number')
+      .select('invoice_number, created_at')  // Incluimos created_at explícitamente
       .eq('series_id', seriesId)
       .order('created_at', { ascending: false })
-      .limit(1)
-      .single();
+      .limit(1);
 
     if (error) {
-      if (error.code === 'PGRST116') { // No data found
-        return null;
-      }
-      throw error;
+      console.error("Error in getLastInvoiceNumber:", error);
+      return null;
     }
 
-    return data?.invoice_number || null;
+    // Verificamos si hay resultados
+    if (!data || data.length === 0) {
+      return null;
+    }
+
+    return data[0].invoice_number;
   } catch (error) {
     console.error("Error getting last invoice number:", error);
     return null;

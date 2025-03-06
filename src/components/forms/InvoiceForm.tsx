@@ -48,7 +48,7 @@ const emptyInvoice: Omit<Invoice, 'id' | 'user_id' | 'created_at' | 'updated_at'
   subtotal: 0,
   tax_rate: 21,
   tax_amount: 0,
-  irpf_rate: 15,
+  irpf_rate: 0,
   irpf_amount: 0,
   total_amount: 0,
   verifactu_xml: null,
@@ -179,6 +179,7 @@ export function InvoiceForm({ invoice, onSubmit, onCancel }: InvoiceFormProps) {
           ...prev,
           client_id: selectedClientData.id,
           company_id: selectedClientData.company_id,
+          irpf_rate: selectedClientData.applies_irpf ? 15 : 0,
         }));
       }
     } catch (error) {
@@ -567,6 +568,7 @@ export function InvoiceForm({ invoice, onSubmit, onCancel }: InvoiceFormProps) {
                           Number.parseFloat(e.target.value) || 0
                         )
                       }
+                      disabled={!selectedClient?.applies_irpf}
                     />
                   </div>
                   <div className="grid gap-2">

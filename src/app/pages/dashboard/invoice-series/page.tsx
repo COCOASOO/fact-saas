@@ -38,7 +38,12 @@ export default function InvoiceSeriesPage() {
   const loadSeries = async () => {
     try {
       const data = await getInvoiceSeries();
-      setSeries(data);
+      if (Array.isArray(data)) {
+        setSeries(data);
+      } else {
+        console.error('Data received is not an array:', data);
+        toast.error("Error al cargar las series");
+      }
     } catch (error) {
       console.error('Error loading series:', error);
       toast.error("No se pudieron cargar las series");
