@@ -97,28 +97,41 @@ export async function getNextInvoiceNumber(seriesId: string): Promise<string> {
     const { data: invoices, error: invoicesError } = await supabase
       .from('invoices')
       .select('invoice_number')
-      .eq('series_id', seriesId)
-      .order('invoice_number');
+      .eq('series_id', seriesId);
 
     if (invoicesError) throw invoicesError;
 
     // Encontrar el primer hueco en la numeración o usar el siguiente número
     let nextNumber = 1;
     if (invoices && invoices.length > 0) {
-      const usedNumbers = invoices.map(inv => parseInt(inv.invoice_number));
-      while (usedNumbers.includes(nextNumber)) {
-        nextNumber++;
+      // Extraer y ordenar los números de las facturas existentes
+      const usedNumbers = invoices
+        .map(inv => {
+          const match = inv.invoice_number.match(/\d+$/);
+          return match ? parseInt(match[0], 10) : 0;
+        })
+        .filter(num => num > 0)
+        .sort((a, b) => a - b);
+
+      // Si no hay números usados, empezar desde 1
+      if (usedNumbers.length === 0) {
+        nextNumber = 1;
+      } else {
+        // Buscar el primer hueco disponible
+        let foundGap = false;
+        for (let i = 1; i <= Math.max(...usedNumbers) + 1; i++) {
+          if (!usedNumbers.includes(i)) {
+            nextNumber = i;
+            foundGap = true;
+            break;
+          }
+        }
+
+        // Si no se encontró ningún hueco, usar el siguiente número
+        if (!foundGap) {
+          nextNumber = Math.max(...usedNumbers) + 1;
+        }
       }
-    }
-
-    // Actualizamos el contador en la base de datos si el nuevo número es mayor
-    if (nextNumber > series.invoice_number) {
-      const { error: updateError } = await supabase
-        .from("invoice_series")
-        .update({ invoice_number: nextNumber })
-        .eq("id", seriesId);
-
-      if (updateError) throw updateError;
     }
 
     // Obtenemos el año actual
@@ -130,12 +143,29 @@ export async function getNextInvoiceNumber(seriesId: string): Promise<string> {
       .replace('%%', currentYear.toString().slice(-2));
 
     // Luego reemplazamos los # con el número de factura
+    const numberPattern = series.serie_format.match(/#+/);
+    if (!numberPattern) {
+      throw new Error('El formato de la serie debe contener al menos un #');
+    }
+
     formattedNumber = formattedNumber.replace(
       /#+/g,
-      nextNumber
-        .toString()
-        .padStart(series.serie_format.match(/#+/)[0].length, "0")
+      nextNumber.toString().padStart(numberPattern[0].length, "0")
     );
+
+    // Verificación final usando el número en lugar del formato completo
+    const { data: existingInvoices } = await supabase
+      .from('invoices')
+      .select('id')
+      .eq('series_id', seriesId)
+      .eq('invoice_number', formattedNumber);
+
+    if (existingInvoices && existingInvoices.length > 0) {
+      // Si el número ya está en uso, intentar con el siguiente
+      console.warn(`Número ${formattedNumber} ya en uso, intentando con el siguiente...`);
+      nextNumber++;
+      return getNextInvoiceNumber(seriesId);
+    }
 
     return formattedNumber;
   } catch (error) {

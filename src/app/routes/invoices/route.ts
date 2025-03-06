@@ -1,6 +1,6 @@
 import { createClient } from "@/lib/supabase/supabaseClient"
 import type { Invoice } from "@/app/types/invoice"
-import { getNextInvoiceNumber } from "../invoice_series/route";
+import { getNextInvoiceNumber, updateSeriesInvoiceCount } from "../invoice_series/route";
 
 const supabase = createClient()
 
@@ -84,48 +84,46 @@ export async function getInvoiceById(id: string) {
     }
 }
 
-export async function addInvoice(invoice: Omit<Invoice, 'id' | 'user_id'>) {
+export async function addInvoice(invoice: Omit<Invoice, 'id' | 'user_id'>): Promise<Invoice> {
     try {
-        const userId = await getCurrentUserId();
-        
-        // Obtenemos la serie por defecto si no se especifica una
-        let seriesId = invoice.series_id;
-        if (!seriesId) {
-            const { data: defaultSeries } = await supabase
-                .from('invoice_series')
-                .select('*')
-                .eq('user_id', userId)
-                .eq('default', true)
-                .eq('type', 'standard')
-                .single();
-            
-            if (!defaultSeries) {
-                throw new Error('No hay una serie de facturación por defecto configurada');
-            }
-            seriesId = defaultSeries.id;
+        const userId = (await supabase.auth.getUser()).data.user?.id;
+        if (!userId) {
+            throw new Error("Usuario no autenticado");
         }
 
-        // Generamos el siguiente número de factura
-        const invoiceNumber = await getNextInvoiceNumber(seriesId);
-
-        // Creamos la factura con el nuevo número
-        const invoiceData = {
-            ...invoice,
-            user_id: userId,
-            invoice_number: invoiceNumber,
-            series_id: seriesId
-        };
-
+        // Obtener el siguiente número de factura
+        const nextNumber = await getNextInvoiceNumber(invoice.series_id);
+        
+        // Crear la factura directamente con el nuevo número
         const { data, error } = await supabase
             .from('invoices')
-            .insert([invoiceData])
+            .insert([
+                {
+                    ...invoice,
+                    user_id: userId,
+                    invoice_number: nextNumber,
+                    created_at: new Date().toISOString(),
+                    updated_at: new Date().toISOString()
+                }
+            ])
             .select()
             .single();
 
-        if (error) throw error;
-        return data;
+        if (error) {
+            if (error.code === '23505') {
+                // Si hay un conflicto, intentamos obtener el siguiente número disponible
+                console.log("Conflicto detectado, intentando con el siguiente número...");
+                return addInvoice(invoice); // Intentar nuevamente con el siguiente número
+            }
+            throw error;
+        }
+
+        // Actualizar el contador de la serie
+        await updateSeriesInvoiceCount(invoice.series_id);
+
+        return data as Invoice;
     } catch (error) {
-        console.error('Error creating invoice:', error);
+        console.error("Error creating invoice:", error);
         throw error;
     }
 }
