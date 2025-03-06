@@ -57,7 +57,8 @@ const emptyInvoice: Omit<Invoice, 'id' | 'user_id' | 'created_at' | 'updated_at'
   verifactu_status: null,
   verifactu_response: null,
   series_id: "",
-  invoice_number: ""
+  invoice_number: "",
+  invoice_type: 'standard' as 'standard' | 'rectifying',
 };
 
 export function InvoiceForm({ invoice, onSubmit, onCancel }: InvoiceFormProps) {
@@ -73,6 +74,8 @@ export function InvoiceForm({ invoice, onSubmit, onCancel }: InvoiceFormProps) {
   const [company, setCompany] = useState<Company>();
   const [series, setSeries] = useState<InvoiceSeries[]>([]);
   const [selectedSeries, setSelectedSeries] = useState<string>("");
+  const [invoiceType, setInvoiceType] = useState<'standard' | 'rectifying'>('standard');
+  const [seriesError, setSeriesError] = useState<string>("");
 
   useEffect(() => {
     const loadCompany = async () => {
@@ -123,19 +126,31 @@ export function InvoiceForm({ invoice, onSubmit, onCancel }: InvoiceFormProps) {
         const seriesData = await getInvoiceSeries();
         setSeries(seriesData);
         
+        const availableSeries = seriesData.filter(s => s.type === invoiceType);
+        if (availableSeries.length === 0) {
+          setSeriesError(`No hay series configuradas para facturas ${invoiceType === 'standard' ? 'estándar' : 'rectificativas'}`);
+          return;
+        }
+        
+        setSeriesError("");
+        
         if (!selectedSeries) {
-          const defaultSeries = seriesData.find(s => s.default && s.type === 'standard');
+          const defaultSeries = availableSeries.find(s => s.default);
           if (defaultSeries) {
             setSelectedSeries(defaultSeries.id);
             setFormData(prev => ({ ...prev, series_id: defaultSeries.id }));
+          } else {
+            setSelectedSeries(availableSeries[0].id);
+            setFormData(prev => ({ ...prev, series_id: availableSeries[0].id }));
           }
         }
       } catch (error) {
         console.error("Error loading series:", error);
+        setSeriesError("Error al cargar las series de facturación");
       }
     };
     loadSeries();
-  }, []);
+  }, [invoiceType]);
 
   useEffect(() => {
     const taxAmount = Number((calculateTaxAmount(formData.subtotal, formData.tax_rate)).toFixed(2));
@@ -202,6 +217,14 @@ export function InvoiceForm({ invoice, onSubmit, onCancel }: InvoiceFormProps) {
       newErrors.subtotal = "La base imponible debe ser mayor que 0";
     }
 
+    if (!formData.series_id) {
+      newErrors.series_id = "Debe seleccionar una serie de facturación";
+    }
+
+    if (seriesError) {
+      newErrors.series_id = seriesError;
+    }
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -235,29 +258,38 @@ export function InvoiceForm({ invoice, onSubmit, onCancel }: InvoiceFormProps) {
               <h3 className="text-lg font-medium">Información Básica</h3>
               <div className="grid gap-4">
                 {!invoice && (
-                  <div className="grid gap-2">
-                    <Label htmlFor="series_id">Serie de Facturación</Label>
-                    <Select
-                      value={selectedSeries}
-                      onValueChange={(value) => {
-                        setSelectedSeries(value);
-                        setFormData(prev => ({ ...prev, series_id: value }));
-                      }}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Seleccionar serie" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {series
-                          .filter(s => s.type === 'standard')
-                          .map((s) => (
-                            <SelectItem key={s.id} value={s.id}>
-                              {s.serie_format} {s.default ? "(Por defecto)" : ""}
-                            </SelectItem>
-                          ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
+                  <>
+                    <div className="grid gap-2">
+                      <Label htmlFor="invoice_type">Tipo de Factura</Label>
+                      <Select
+                        value={invoiceType}
+                        onValueChange={(value: 'standard' | 'rectifying') => {
+                          setInvoiceType(value);
+                          setFormData(prev => ({ ...prev, invoice_type: value }));
+                          setSelectedSeries("");
+                        }}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Seleccionar tipo" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="standard">Estándar</SelectItem>
+                          <SelectItem value="rectifying">Rectificativa</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="grid gap-2">
+                      <Label htmlFor="series_id">Serie de Facturación</Label>
+                      <Input
+                        value={series.find(s => s.id === selectedSeries)?.serie_format || ''}
+                        readOnly
+                        className={`bg-muted ${seriesError ? 'border-red-500' : ''}`}
+                      />
+                      {seriesError && (
+                        <p className="text-red-500 text-sm">{seriesError}</p>
+                      )}
+                    </div>
+                  </>
                 )}
                 {invoice && (
                   <div className="grid gap-2">

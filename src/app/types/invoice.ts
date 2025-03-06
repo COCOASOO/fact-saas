@@ -30,6 +30,7 @@ export interface Invoice {
   updated_at: string;
   series_id: string;
   rectifies_invoice_id?: string | null;
+  invoice_type: 'standard' | 'rectifying';
 }
 
 export type InvoiceDB = Omit<Invoice, 'client' | 'company'>;
