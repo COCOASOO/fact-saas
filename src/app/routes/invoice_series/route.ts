@@ -50,25 +50,28 @@ export async function getInvoiceSeries() {
 
 export async function addInvoiceSeries(series: CreateInvoiceSeriesDTO) {
   try {
-    // Si es serie por defecto, actualizar las otras series del mismo tipo
-    if (series.default) {
-      const { error: updateError } = await supabase
-        .from("invoice_series")
-        .update({ default: false })
-        .eq("user_id", (await supabase.auth.getUser()).data.user?.id)
-        .eq("type", series.type);
+    // Siempre establecer como default al crear
+    const seriesWithDefault = {
+      ...series,
+      default: true
+    };
 
-      if (updateError) throw updateError;
-    }
+    // Actualizar las otras series del mismo tipo
+    const { error: updateError } = await supabase
+      .from("invoice_series")
+      .update({ default: false })
+      .eq("user_id", (await supabase.auth.getUser()).data.user?.id)
+      .eq("type", series.type);
+
+    if (updateError) throw updateError;
 
     const { data, error } = await supabase
       .from("invoice_series")
       .insert([
         {
-          ...series,
+          ...seriesWithDefault,
           user_id: (await supabase.auth.getUser()).data.user?.id,
           invoice_number: series.invoice_number || 0,
-          default: series.default ?? false,
           type: series.type || null
         }
       ])

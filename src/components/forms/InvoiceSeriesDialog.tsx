@@ -15,7 +15,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Switch } from "@/components/ui/switch";
 import { CreateInvoiceSeriesDTO, InvoiceSeries } from '@/app/types/invoice-series';
 import { addInvoiceSeries, updateInvoiceSeries, checkSeriesHasInvoices, checkDuplicateFormat } from '@/app/routes/invoice_series/route';
 import { createClient } from '@/lib/supabase/supabaseClient';
@@ -184,15 +183,6 @@ export function InvoiceSeriesDialog({
                 <SelectItem value="rectifying">Rectificativa</SelectItem>
               </SelectContent>
             </Select>
-          </div>
-
-          <div className="flex items-center space-x-2">
-            <Switch
-              id="default"
-              checked={formData.default}
-              onCheckedChange={(checked) => setFormData({ ...formData, default: checked })}
-            />
-            <Label htmlFor="default">Serie por defecto</Label>
           </div>
 
           <div className="flex justify-end space-x-2">

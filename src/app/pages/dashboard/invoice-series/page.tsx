@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/table";
 import { Plus, Pencil, Trash2, Search } from "lucide-react";
 import { InvoiceSeries } from '@/app/types/invoice-series';
-import { getInvoiceSeries, deleteInvoiceSeries, checkSeriesHasInvoices } from '@/app/routes/invoice_series/route';
+import { getInvoiceSeries, deleteInvoiceSeries, checkSeriesHasInvoices, updateInvoiceSeries } from '@/app/routes/invoice_series/route';
 import { InvoiceSeriesDialog } from '@/components/forms/InvoiceSeriesDialog';
 import { Toaster, toast } from 'sonner';
 import {
@@ -31,6 +31,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
 
 export default function InvoiceSeriesPage() {
   const [series, setSeries] = useState<InvoiceSeries[]>([]);
@@ -63,14 +64,16 @@ export default function InvoiceSeriesPage() {
   const handleCreateSeries = () => {
     setCurrentSeries(null);
     setIsDialogOpen(true);
+    toast.info("La nueva serie se establecerá como predeterminada para su tipo");
   };
 
   const handleEditSeries = async (series: InvoiceSeries) => {
     const hasInvoices = await checkSeriesHasInvoices(series.id);
     if (hasInvoices) {
-      toast.warning("Esta serie contiene facturas. Solo podrás modificar si es la serie por defecto.");
+      toast.error("No se puede editar una serie que contiene facturas");
+      return;
     }
-    setCurrentSeries({ ...series, has_invoices: hasInvoices });
+    setCurrentSeries({ ...series });
     setIsDialogOpen(true);
   };
 
@@ -99,6 +102,32 @@ export default function InvoiceSeriesPage() {
     } catch (error) {
       console.error('Error deleting series:', error);
       toast.error(error instanceof Error ? error.message : "Error al eliminar la serie");
+    }
+  };
+
+  const handleDefaultToggle = async (series: InvoiceSeries) => {
+    if (!series.default) {
+      try {
+        // Primero obtenemos todas las series del mismo tipo
+        const seriesOfSameType = filteredAndSortedSeries.filter(
+          s => s.type === series.type && s.id !== series.id
+        );
+
+        // Desactivamos la serie que estaba por defecto
+        const defaultSeries = seriesOfSameType.find(s => s.default);
+        if (defaultSeries) {
+          await updateInvoiceSeries(defaultSeries.id, { default: false });
+        }
+
+        // Activamos la nueva serie por defecto
+        await updateInvoiceSeries(series.id, { default: true });
+        
+        toast.success("Serie establecida como predeterminada");
+        loadSeries();
+      } catch (error) {
+        console.error('Error updating default series:', error);
+        toast.error("Error al establecer la serie como predeterminada");
+      }
     }
   };
 
@@ -186,23 +215,35 @@ export default function InvoiceSeriesPage() {
                     </TableCell>
                     <TableCell>{serie.invoice_number}</TableCell>
                     <TableCell>{serie.last_invoice_number || 'Sin facturas'}</TableCell>
-                    <TableCell>{serie.default ? "Sí" : "No"}</TableCell>
+                    <TableCell>
+                      <Switch
+                        checked={serie.default}
+                        onCheckedChange={() => handleDefaultToggle(serie)}
+                        disabled={serie.default}
+                      />
+                    </TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-2">
                         <Button
                           variant="ghost"
                           size="icon"
-                          onClick={() => handleEditSeries(serie)}
-                          title={serie.has_invoices ? "Solo podrás modificar si es la serie por defecto" : "Editar serie"}
+                          disabled={serie.has_invoices || serie.last_invoice_number !== null}
+                          className={serie.has_invoices || serie.last_invoice_number !== null ? 'opacity-50 cursor-not-allowed' : ''}
+                          onClick={() => !serie.has_invoices && handleEditSeries(serie)}
+                          title={
+                            serie.has_invoices
+                              ? "No se puede editar una serie que contiene facturas"
+                              : "Editar serie"
+                          }
                         >
                           <Pencil className="h-4 w-4" />
                         </Button>
                         <Button
                           variant="ghost"
                           size="icon"
-                          className={`text-red-500 ${(serie.default || serie.has_invoices) ? 'opacity-50 cursor-not-allowed' : ''}`}
+                          className={`text-red-500 ${(serie.default || serie.has_invoices || serie.last_invoice_number !== null) ? 'opacity-50 cursor-not-allowed' : ''}`}
                           onClick={() => handleDeleteClick(serie)}
-                          disabled={serie.default || serie.has_invoices}
+                          disabled={serie.default ||serie.has_invoices || serie.last_invoice_number !== null}
                           title={
                             serie.default
                               ? "No se puede eliminar una serie por defecto"
@@ -255,7 +296,7 @@ export default function InvoiceSeriesPage() {
           loadSeries();
           toast.success(currentSeries 
             ? "Serie actualizada correctamente" 
-            : "Serie creada correctamente"
+            : "Serie creada correctamente y establecida como predeterminada"
           );
         }}
       />
