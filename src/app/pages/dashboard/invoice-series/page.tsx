@@ -10,7 +10,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Plus, Pencil, Trash2 } from "lucide-react";
+import { Plus, Pencil, Trash2, Search } from "lucide-react";
 import { InvoiceSeries } from '@/app/types/invoice-series';
 import { getInvoiceSeries, deleteInvoiceSeries, checkSeriesHasInvoices } from '@/app/routes/invoice_series/route';
 import { InvoiceSeriesDialog } from '@/components/forms/InvoiceSeriesDialog';
@@ -23,6 +23,14 @@ import {
   DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 export default function InvoiceSeriesPage() {
   const [series, setSeries] = useState<InvoiceSeries[]>([]);
@@ -30,6 +38,8 @@ export default function InvoiceSeriesPage() {
   const [currentSeries, setCurrentSeries] = useState<InvoiceSeries | null>(null);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [seriesForDeletion, setSeriesForDeletion] = useState<InvoiceSeries | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [typeFilter, setTypeFilter] = useState<"all" | "standard" | "rectifying">("all");
 
   useEffect(() => {
     loadSeries();
@@ -92,6 +102,22 @@ export default function InvoiceSeriesPage() {
     }
   };
 
+  // Filter and sort series
+  const filteredAndSortedSeries = series
+    .filter((serie) => {
+      const matchesSearch = serie.serie_format.toLowerCase().includes(searchQuery.toLowerCase());
+      const matchesType = typeFilter === "all" || serie.type === typeFilter;
+      return matchesSearch && matchesType;
+    })
+    .sort((a, b) => {
+      // First sort by default status (default series first)
+      if (a.default !== b.default) {
+        return a.default ? -1 : 1;
+      }
+      // Then sort by series format
+      return a.serie_format.localeCompare(b.serie_format);
+    });
+
   return (
     <div className="container mx-auto py-6">
       <Toaster richColors position="top-right" />
@@ -103,60 +129,98 @@ export default function InvoiceSeriesPage() {
         </Button>
       </div>
 
-      <div className="border rounded-lg">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Formato</TableHead>
-              <TableHead>Tipo</TableHead>
-              <TableHead>Cantidad de Facturas</TableHead>
-              <TableHead>Última Factura</TableHead>
-              <TableHead>Por Defecto</TableHead>
-              <TableHead className="text-right">Acciones</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {series.map((serie) => (
-              <TableRow key={serie.id}>
-                <TableCell>{serie.serie_format}</TableCell>
-                <TableCell>
-                  {serie.type === 'standard' ? 'Estándar' : 'Rectificativa'}
-                </TableCell>
-                <TableCell>{serie.invoice_number}</TableCell>
-                <TableCell>{serie.last_invoice_number || 'Sin facturas'}</TableCell>
-                <TableCell>{serie.default ? "Sí" : "No"}</TableCell>
-                <TableCell className="text-right">
-                  <div className="flex justify-end gap-2">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => handleEditSeries(serie)}
-                      title={serie.has_invoices ? "Solo podrás modificar si es la serie por defecto" : "Editar serie"}
-                    >
-                      <Pencil className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className={`text-red-500 ${(serie.default || serie.has_invoices) ? 'opacity-50 cursor-not-allowed' : ''}`}
-                      onClick={() => handleDeleteClick(serie)}
-                      disabled={serie.default || serie.has_invoices}
-                      title={
-                        serie.default
-                          ? "No se puede eliminar una serie por defecto"
-                          : serie.has_invoices
-                          ? "No se puede eliminar una serie con facturas"
-                          : "Eliminar serie"
-                      }
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </TableCell>
+      <div className="space-y-4">
+        <div className="flex items-center gap-2 flex-wrap">
+          <div className="relative flex-1 max-w-sm">
+            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Buscar series..."
+              className="pl-8"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
+          </div>
+          
+          <Select
+            value={typeFilter}
+            onValueChange={(value) => setTypeFilter(value as typeof typeFilter)}
+          >
+            <SelectTrigger className="w-[180px]">
+              <SelectValue placeholder="Tipo de serie" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos los tipos</SelectItem>
+              <SelectItem value="standard">Estándar</SelectItem>
+              <SelectItem value="rectifying">Rectificativa</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div className="border rounded-lg">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Formato</TableHead>
+                <TableHead>Tipo</TableHead>
+                <TableHead>Cantidad de Facturas</TableHead>
+                <TableHead>Última Factura</TableHead>
+                <TableHead>Por Defecto</TableHead>
+                <TableHead className="text-right">Acciones</TableHead>
               </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+            </TableHeader>
+            <TableBody>
+              {filteredAndSortedSeries.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">
+                    {series.length === 0 
+                      ? "No hay series de facturación definidas"
+                      : "No se encontraron series que coincidan con los filtros"}
+                  </TableCell>
+                </TableRow>
+              ) : (
+                filteredAndSortedSeries.map((serie) => (
+                  <TableRow key={serie.id} className={serie.default ? "bg-muted/50" : ""}>
+                    <TableCell>{serie.serie_format}</TableCell>
+                    <TableCell>
+                      {serie.type === 'standard' ? 'Estándar' : 'Rectificativa'}
+                    </TableCell>
+                    <TableCell>{serie.invoice_number}</TableCell>
+                    <TableCell>{serie.last_invoice_number || 'Sin facturas'}</TableCell>
+                    <TableCell>{serie.default ? "Sí" : "No"}</TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex justify-end gap-2">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleEditSeries(serie)}
+                          title={serie.has_invoices ? "Solo podrás modificar si es la serie por defecto" : "Editar serie"}
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className={`text-red-500 ${(serie.default || serie.has_invoices) ? 'opacity-50 cursor-not-allowed' : ''}`}
+                          onClick={() => handleDeleteClick(serie)}
+                          disabled={serie.default || serie.has_invoices}
+                          title={
+                            serie.default
+                              ? "No se puede eliminar una serie por defecto"
+                              : serie.has_invoices
+                              ? "No se puede eliminar una serie con facturas"
+                              : "Eliminar serie"
+                          }
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </div>
       </div>
 
       {/* Delete Confirmation Dialog */}

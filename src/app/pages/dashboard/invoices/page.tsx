@@ -23,6 +23,15 @@ import { getInvoices, updateInvoice, deleteInvoice, addInvoice } from "@/app/rou
 import { getClients } from "@/app/routes/clients/route"
 import { Client } from "@/app/types/client"
 import { toast } from "sonner"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import { getInvoiceSeries } from "@/app/routes/invoice_series/route"
+import type { InvoiceSeries } from "@/app/types/invoice-series"
 
 const getStatusColor = (status: Invoice["status"]) => {
   switch (status) {
@@ -50,21 +59,27 @@ export default function InvoicesPage() {
   const [invoices, setInvoices] = useState<Invoice[]>([])
   const [clients, setClients] = useState<Client[]>([])
   const [searchQuery, setSearchQuery] = useState("")
+  const [selectedSeries, setSelectedSeries] = useState<string>("all")
+  const [selectedStatus, setSelectedStatus] = useState<Invoice["status"] | "all">("all")
+  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc")
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
   const [currentInvoice, setCurrentInvoice] = useState<Invoice | null>(null)
+  const [invoiceSeries, setInvoiceSeries] = useState<InvoiceSeries[]>([])
 
   // Load invoices and clients on component mount
   useEffect(() => {
     const loadData = async () => {
       try {
-        const [invoicesData, clientsData] = await Promise.all([
+        const [invoicesData, clientsData, seriesData] = await Promise.all([
           getInvoices(),
-          getClients()
+          getClients(),
+          getInvoiceSeries()
         ])
         setInvoices(invoicesData)
         setClients(clientsData)
+        setInvoiceSeries(seriesData)
       } catch (error) {
         console.error("Error loading data:", error)
       }
@@ -72,10 +87,21 @@ export default function InvoicesPage() {
     loadData()
   }, [])
 
-  // Filter invoices based on search query
-  const filteredInvoices = invoices.filter((invoice) =>
-    invoice.invoice_number.toLowerCase().includes(searchQuery.toLowerCase()),
-  )
+  // Filtrar las series que tienen facturas
+  const activeSeries = invoiceSeries.filter(series => series.last_invoice_number !== null)
+
+  // Filter and sort invoices
+  const filteredInvoices = invoices
+    .filter((invoice) => {
+      const matchesSearch = invoice.invoice_number.toLowerCase().includes(searchQuery.toLowerCase())
+      const matchesSeries = selectedSeries === "all" || invoice.series_id === selectedSeries
+      const matchesStatus = selectedStatus === "all" || invoice.status === selectedStatus
+      return matchesSearch && matchesSeries && matchesStatus
+    })
+    .sort((a, b) => {
+      const comparison = a.invoice_number.localeCompare(b.invoice_number)
+      return sortDirection === "asc" ? comparison : -comparison
+    })
 
   // Handle invoice creation
   const handleCreateInvoice = async (newInvoice: Omit<Invoice, 'id' | 'user_id'>) => {
@@ -153,7 +179,7 @@ export default function InvoicesPage() {
         </div>
       </div>
       <div className="space-y-4">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <div className="relative flex-1 max-w-sm">
             <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
             <Input
@@ -163,7 +189,48 @@ export default function InvoicesPage() {
               onChange={(e) => setSearchQuery(e.target.value)}
             />
           </div>
+          
+          <Select
+            value={selectedSeries}
+            onValueChange={setSelectedSeries}
+          >
+            <SelectTrigger className="w-[180px]">
+              <SelectValue placeholder="Seleccionar serie" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todas las series</SelectItem>
+              {activeSeries.map(series => (
+                <SelectItem key={series.id} value={series.id}>
+                  {series.serie_format}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          <Select
+            value={selectedStatus}
+            onValueChange={(value) => setSelectedStatus(value as Invoice["status"] | "all")}
+          >
+            <SelectTrigger className="w-[180px]">
+              <SelectValue placeholder="Seleccionar estado" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos los estados</SelectItem>
+              <SelectItem value="draft">Borrador</SelectItem>
+              <SelectItem value="submitted">Presentada</SelectItem>
+              <SelectItem value="final">Definitiva</SelectItem>
+            </SelectContent>
+          </Select>
+
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={() => setSortDirection(prev => prev === "asc" ? "desc" : "asc")}
+          >
+            {sortDirection === "asc" ? "↑" : "↓"}
+          </Button>
         </div>
+
         <div className="border rounded-lg">
           <Table>
             <TableHeader>
