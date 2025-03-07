@@ -94,12 +94,15 @@ export async function addInvoice(invoice: Omit<Invoice, 'id' | 'user_id'>): Prom
         // Obtener el siguiente número de factura
         const nextNumber = await getNextInvoiceNumber(invoice.series_id);
         
+        // Extraemos invoice_type para que no se incluya en la inserción
+        const { invoice_type, ...invoiceData } = invoice;
+        
         // Crear la factura directamente con el nuevo número
         const { data, error } = await supabase
             .from('invoices')
             .insert([
                 {
-                    ...invoice,
+                    ...invoiceData,
                     user_id: userId,
                     invoice_number: nextNumber,
                     created_at: new Date().toISOString(),

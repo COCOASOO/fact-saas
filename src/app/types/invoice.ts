@@ -47,6 +47,7 @@ export interface InvoiceFormData
     | "verifactu_signature"
     | "verifactu_status"
     | "verifactu_response"
+    | "invoice_type"
   > {
   // Form specific fields can be added here
 }
