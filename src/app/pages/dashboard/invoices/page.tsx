@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Plus, Pencil, Trash2, Search, Download, Building2 } from "lucide-react"
+import { Plus, Pencil, Trash2, Search, Download, Building2, Check, CheckCircle, FileCheck, FileEdit } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
@@ -32,15 +32,18 @@ import {
 } from "@/components/ui/select"
 import { getInvoiceSeries } from "@/app/routes/invoice_series/route"
 import type { InvoiceSeries } from "@/app/types/invoice-series"
+import { pdf } from "@react-pdf/renderer"
+import { saveAs } from "file-saver"
+import { InvoicePDF } from "@/components/InvoicePDF"
 
 const getStatusColor = (status: Invoice["status"]) => {
   switch (status) {
     case "final":
-      return "bg-green-100 text-green-800"
+      return "bg-green-100 text-green-800 border-green-200"
     case "submitted":
-      return "bg-blue-100 text-blue-800"
+      return "bg-blue-100 text-blue-800 border-blue-200"
     default:
-      return "bg-yellow-100 text-yellow-800"
+      return "bg-yellow-100 text-yellow-800 border-yellow-200"
   }
 }
 
@@ -55,6 +58,34 @@ const getStatusText = (status: Invoice["status"]) => {
   }
 }
 
+const getStatusIcon = (status: Invoice["status"]) => {
+  switch (status) {
+    case "final":
+      return <CheckCircle className="h-3 w-3 mr-1" />
+    case "submitted":
+      return <FileCheck className="h-3 w-3 mr-1" />
+    default:
+      return <FileEdit className="h-3 w-3 mr-1" />
+  }
+}
+
+async function uploadPDF(formData: FormData): Promise<string> {
+  // Esta es una implementación temporal, deberías reemplazarla
+  // con tu lógica real para subir archivos a tu storage
+  console.log("Simulando subida de PDF...");
+  
+  // Aquí iría tu código para subir el PDF a un servicio de almacenamiento
+  // Ejemplo: supabase, firebase, o tu propio servidor
+  
+  // Por ahora, simular con un timeout y devolver una URL ficticia
+  return new Promise((resolve) => {
+    setTimeout(() => {
+      // En un entorno real, aquí devolverías la URL real del PDF subido
+      resolve(`https://tudominio.com/storage/invoices/factura-${Date.now()}.pdf`);
+    }, 1000);
+  });
+}
+
 export default function InvoicesPage() {
   const [invoices, setInvoices] = useState<Invoice[]>([])
   const [clients, setClients] = useState<Client[]>([])
@@ -67,6 +98,8 @@ export default function InvoicesPage() {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
   const [currentInvoice, setCurrentInvoice] = useState<Invoice | null>(null)
   const [invoiceSeries, setInvoiceSeries] = useState<InvoiceSeries[]>([])
+  const [isFinalizarDialogOpen, setIsFinalizarDialogOpen] = useState(false)
+  const [invoiceToFinalize, setInvoiceToFinalize] = useState<Invoice | null>(null)
 
   // Load invoices and clients on component mount
   useEffect(() => {
@@ -152,6 +185,48 @@ export default function InvoicesPage() {
   const getClientName = (clientId: string) => {
     const client = clients.find(c => c.id === clientId)
     return client?.name || 'Cliente no disponible'
+  }
+
+  // Handle finalizar invoice
+  const handleFinalizarInvoice = (invoice: Invoice) => {
+    setInvoiceToFinalize(invoice)
+    setIsFinalizarDialogOpen(true)
+  }
+
+  // Handle finalizar confirmation
+  const handleFinalizarConfirmation = async (invoice: Invoice) => {
+    try {
+      // Generar el PDF
+      const blob = await pdf(<InvoicePDF invoice={invoice} />).toBlob();
+      
+      // Subir el PDF a tu almacenamiento (ejemplo con FormData)
+      const formData = new FormData();
+      formData.append('pdf', blob, `${invoice.invoice_number}.pdf`);
+      
+      // Aquí deberías implementar la lógica para subir el PDF a tu servidor/storage
+      const pdfUrl = await uploadPDF(formData);
+      
+      // Actualizar la factura con la URL del PDF y el estado final
+      const finalizedInvoice = await updateInvoice(invoice.id, { 
+        ...invoice, 
+        status: "final",
+        pdf_url: pdfUrl
+      });
+      
+      // Actualizar el estado local
+      setInvoices(invoices.map(inv => 
+        inv.id === finalizedInvoice.id ? finalizedInvoice : inv
+      ));
+      
+      setIsFinalizarDialogOpen(false);
+      toast.success("Factura finalizada correctamente");
+      
+      // Descargar el PDF automáticamente
+      saveAs(blob, `${invoice.invoice_number}.pdf`);
+    } catch (error) {
+      console.error("Error al finalizar la factura:", error);
+      toast.error("Error al finalizar la factura");
+    }
   }
 
   return (
@@ -264,7 +339,10 @@ export default function InvoicesPage() {
                     <TableCell className="text-right">{formatCurrency(invoice.irpf_amount)}</TableCell>
                     <TableCell className="text-right font-medium">{formatCurrency(invoice.total_amount)}</TableCell>
                     <TableCell className="text-center">
-                      <Badge className={getStatusColor(invoice.status)}>{getStatusText(invoice.status)}</Badge>
+                      <Badge className={`flex items-center justify-center ${getStatusColor(invoice.status)}`}>
+                        {getStatusIcon(invoice.status)}
+                        {getStatusText(invoice.status)}
+                      </Badge>
                     </TableCell>
                     <TableCell>
                       <div className="flex justify-end gap-2">
@@ -294,6 +372,15 @@ export default function InvoicesPage() {
                             >
                               <Trash2 className="h-4 w-4" />
                               <span className="sr-only">Eliminar</span>
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="text-green-500 hover:text-green-500"
+                              onClick={() => handleFinalizarInvoice(invoice)}
+                            >
+                              <Check className="h-4 w-4" />
+                              <span className="sr-only">Finalizar</span>
                             </Button>
                           </>
                         )}
@@ -340,6 +427,30 @@ export default function InvoicesPage() {
             </Button>
             <Button variant="destructive" onClick={() => currentInvoice && handleDeleteConfirmation(currentInvoice)}>
               Eliminar Factura
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Finalizar Factura Dialog */}
+      <Dialog open={isFinalizarDialogOpen} onOpenChange={setIsFinalizarDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Finalizar Factura</DialogTitle>
+            <DialogDescription>
+              ¿Estás seguro de que quieres finalizar la factura {invoiceToFinalize?.invoice_number}? 
+              Una vez finalizada, esta factura no podrá ser editada ni eliminada.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsFinalizarDialogOpen(false)}>
+              Cancelar
+            </Button>
+            <Button 
+              className="bg-green-600 hover:bg-green-700" 
+              onClick={() => invoiceToFinalize && handleFinalizarConfirmation(invoiceToFinalize)}
+            >
+              Finalizar Factura
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -1,24 +1,34 @@
-export function calculateTaxAmount(subtotal: number, taxRate: number): number {
-    return (subtotal * taxRate) / 100
-  }
+export function calculateTaxAmount(subtotal: any, taxRate: any): number {
+  const numSubtotal = typeof subtotal === 'number' ? subtotal : Number(subtotal) || 0;
+  const numTaxRate = typeof taxRate === 'number' ? taxRate : Number(taxRate) || 0;
   
-  export function calculateIrpfAmount(subtotal: number, irpfRate: number): number {
-    return (subtotal * irpfRate) / 100
-  }
+  return (numSubtotal * numTaxRate) / 100;
+}
+
+export function calculateIrpfAmount(subtotal: any, irpfRate: any): number {
+  const numSubtotal = typeof subtotal === 'number' ? subtotal : Number(subtotal) || 0;
+  const numIrpfRate = typeof irpfRate === 'number' ? irpfRate : Number(irpfRate) || 0;
   
-  export function calculateTotalAmount(subtotal: number, taxAmount: number, irpfAmount: number): number {
-    return subtotal + taxAmount - irpfAmount
-  }
+  return (numSubtotal * numIrpfRate) / 100;
+}
+
+export function calculateTotalAmount(subtotal: any, taxAmount: any, irpfAmount: any): number {
+  const numSubtotal = typeof subtotal === 'number' ? subtotal : Number(subtotal) || 0;
+  const numTaxAmount = typeof taxAmount === 'number' ? taxAmount : Number(taxAmount) || 0;
+  const numIrpfAmount = typeof irpfAmount === 'number' ? irpfAmount : Number(irpfAmount) || 0;
   
-  export function formatCurrency(amount: number, currency = "EUR"): string {
-    return new Intl.NumberFormat("es-ES", {
-      style: "currency",
-      currency: currency,
-    }).format(amount)
-  }
-  
-  export function formatDate(date: string): string {
-    return new Intl.DateTimeFormat("es-ES").format(new Date(date))
-  }
+  return numSubtotal + numTaxAmount - numIrpfAmount;
+}
+
+export function formatCurrency(amount: any): string {
+  const numAmount = typeof amount === 'number' ? amount : Number(amount) || 0;
+  return numAmount.toFixed(2).replace(/\d(?=(\d{3})+\.)/g, '$&,');
+}
+
+export function formatDate(dateString: string): string {
+  if (!dateString) return '';
+  const date = new Date(dateString);
+  return date.toLocaleDateString('es-ES');
+}
   
   

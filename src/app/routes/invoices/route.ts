@@ -215,3 +215,70 @@ export async function deleteInvoice(id: string) {
         throw error;
     }
 }
+
+export async function updateInvoiceStatus(id: string, status: Invoice["status"]) {
+    console.group(`🔄 updateInvoiceStatus(${id}, ${status})`);
+    try {
+        const userId = await getCurrentUserId();
+        console.log('Actualizando estado de factura:', id, 'a', status);
+        
+        // Verificar que la factura esté en estado "draft" si se va a finalizar
+        if (status === 'final') {
+            const { data: invoice, error: getError } = await supabase
+                .from('invoices')
+                .select('status')
+                .eq('id', id)
+                .eq('user_id', userId)
+                .single();
+            
+            if (getError) {
+                console.error('❌ Error al obtener factura:', getError);
+                throw getError;
+            }
+            
+            if (invoice.status !== 'draft') {
+                throw new Error('Solo se pueden finalizar facturas en estado borrador');
+            }
+        }
+        
+        // Actualizar el estado de la factura
+        const { error } = await supabase
+            .from('invoices')
+            .update({ 
+                status, 
+                updated_at: new Date().toISOString(),
+                // Si el estado es "final", guardar la fecha de finalización
+                ...(status === 'final' ? { finalized_at: new Date().toISOString() } : {})
+            })
+            .eq('id', id)
+            .eq('user_id', userId);
+        
+        if (error) {
+            console.error('❌ Error al actualizar estado:', error);
+            throw error;
+        }
+        
+        // Obtener la factura actualizada
+        const { data: updatedInvoice, error: fetchError } = await supabase
+            .from('invoices')
+            .select(`
+                *,
+                clients!inner(*)
+            `)
+            .eq('id', id)
+            .single();
+        
+        if (fetchError) {
+            console.error('❌ Error al obtener factura actualizada:', fetchError);
+            throw fetchError;
+        }
+        
+        console.log('✅ Estado actualizado:', updatedInvoice);
+        console.groupEnd();
+        return updatedInvoice as Invoice;
+    } catch (error) {
+        console.error('❌ Error en updateInvoiceStatus:', error);
+        console.groupEnd();
+        throw error;
+    }
+}

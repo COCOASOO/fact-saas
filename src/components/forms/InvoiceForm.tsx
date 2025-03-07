@@ -27,6 +27,9 @@ import { Company, getUserCompany } from "@/app/routes/companies/route";
 import { addInvoice } from "@/app/routes/invoices/route";
 import { getInvoiceSeries } from '@/app/routes/invoice_series/route';
 import { InvoiceSeries } from '@/app/types/invoice-series';
+import { PDFViewer } from "@react-pdf/renderer";
+import { InvoicePDF } from "../InvoicePDF";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 interface InvoiceFormProps {
   invoice?: Invoice;
@@ -153,9 +156,9 @@ export function InvoiceForm({ invoice, onSubmit, onCancel }: InvoiceFormProps) {
   }, [invoiceType]);
 
   useEffect(() => {
-    const taxAmount = Number((calculateTaxAmount(formData.subtotal, formData.tax_rate)).toFixed(2));
-    const irpfAmount = Number((calculateIrpfAmount(formData.subtotal, formData.irpf_rate)).toFixed(2));
-    const totalAmount = Number((calculateTotalAmount(formData.subtotal, taxAmount, irpfAmount)).toFixed(2));
+    const taxAmount = Number(calculateTaxAmount(formData.subtotal, formData.tax_rate).toFixed(2));
+    const irpfAmount = Number(calculateIrpfAmount(formData.subtotal, formData.irpf_rate).toFixed(2));
+    const totalAmount = Number(calculateTotalAmount(formData.subtotal, taxAmount, irpfAmount).toFixed(2));
 
     setFormData((prev) => ({
       ...prev,
@@ -169,14 +172,27 @@ export function InvoiceForm({ invoice, onSubmit, onCancel }: InvoiceFormProps) {
     name: keyof InvoiceFormData,
     value: string | number
   ) => {
-    const processedValue = typeof value === 'number' 
-      ? Number(value.toFixed(2))
-      : value;
+    let processedValue: string | number = value;
+    
+    // Si es un valor numérico, asegurarse de que sea number
+    if (
+      name === "subtotal" || 
+      name === "tax_rate" || 
+      name === "tax_amount" || 
+      name === "irpf_rate" || 
+      name === "irpf_amount" || 
+      name === "total_amount"
+    ) {
+      // Convertir a número y limitar a 2 decimales si es necesario
+      const numValue = typeof value === 'number' ? value : Number(value) || 0;
+      processedValue = Number(numValue.toFixed(2));
+    }
 
     setFormData((prev) => ({
       ...prev,
       [name]: processedValue,
     }));
+    
     if (errors[name]) {
       setErrors((prev) => {
         const { [name]: _, ...rest } = prev;
@@ -257,376 +273,403 @@ export function InvoiceForm({ invoice, onSubmit, onCancel }: InvoiceFormProps) {
 
   return (
     <form onSubmit={handleSubmit}>
-      <div className="grid gap-6 py-4">
-        <Card>
-          <CardContent className="p-6">
-            <div className="space-y-4">
-              <h3 className="text-lg font-medium">Información Básica</h3>
-              <div className="grid gap-4">
-                <div className="grid gap-2">
-                  <Label htmlFor="invoice_type">Tipo de Factura</Label>
-                  <Select
-                    value={invoiceType}
-                    onValueChange={(value: 'standard' | 'rectifying') => {
-                      setInvoiceType(value);
-                      setSelectedSeries("");
-                    }}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Seleccionar tipo" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="standard">Estándar</SelectItem>
-                      <SelectItem value="rectifying">Rectificativa</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="series_id">Serie de Facturación</Label>
-                  <Input
-                    value={series.find(s => s.id === selectedSeries)?.serie_format || ''}
-                    readOnly
-                    className={`bg-muted ${seriesError ? 'border-red-500' : ''}`}
-                  />
-                  {seriesError && (
-                    <p className="text-red-500 text-sm">{seriesError}</p>
-                  )}
-                </div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+      <Tabs defaultValue="form" className="w-full">
+        <TabsList className="mb-4">
+          <TabsTrigger value="form">Formulario</TabsTrigger>
+          <TabsTrigger value="preview">Vista Previa</TabsTrigger>
+        </TabsList>
 
-        <Card>
-          <CardContent className="p-6">
-            <div className="space-y-4">
-              <h3 className="text-lg font-medium">Cliente</h3>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="grid gap-2">
-                  <Label htmlFor="client_id">Cliente</Label>
-                  <Select
-                    name="client_id"
-                    value={formData.client_id}
-                    onValueChange={handleClientChange}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecciona un cliente" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {clients.map((client) => (
-                        <SelectItem key={client.id} value={client.id}>
-                          {client.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  {errors.client_id && (
-                    <p className="text-red-500 text-sm">{errors.client_id}</p>
-                  )}
-                </div>
-
-                <div className="grid gap-2">
-                  <Label htmlFor="c_nif">NIF</Label>
-                  <Input
-                    id="c_nif"
-                    name="c_nif"
-                    value={selectedClient?.nif || ""}
-                    onChange={(e) =>
-                      setSelectedClient((prev) =>
-                        prev ? { ...prev, nif: e.target.value } : undefined
-                      )
-                    }
-                  />
-                </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="c_email">Email</Label>
-                  <Input
-                    id="c_email"
-                    name="c_email"
-                    value={selectedClient?.email || ""}
-                    onChange={(e) =>
-                      setSelectedClient((prev) =>
-                        prev ? { ...prev, email: e.target.value } : undefined
-                      )
-                    }
-                  />
-                </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="c_phone">Teléfono</Label>
-                  <Input
-                    id="c_phone"
-                    name="c_phone"
-                    value={selectedClient?.phone || ""}
-                    onChange={(e) =>
-                      setSelectedClient((prev) =>
-                        prev ? { ...prev, phone: e.target.value } : undefined
-                      )
-                    }
-                  />
-                </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="c_address">Dirección</Label>
-                  <Input
-                    id="c_address"
-                    name="c_address"
-                    value={selectedClient?.address || ""}
-                    onChange={(e) =>
-                      setSelectedClient((prev) =>
-                        prev ? { ...prev, address: e.target.value } : undefined
-                      )
-                    }
-                  />
-                </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="c_city">Ciudad</Label>
-                  <Input
-                    id="c_city"
-                    name="c_city"
-                    value={selectedClient?.city || ""}
-                    onChange={(e) =>
-                      setSelectedClient((prev) =>
-                        prev ? { ...prev, city: e.target.value } : undefined
-                      )
-                    }
-                  />
-                </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="c_cp">Código postal</Label>
-                  <Input
-                    id="c_cp"
-                    name="c_cp"
-                    value={selectedClient?.postcode || ""}
-                    onChange={(e) =>
-                      setSelectedClient((prev) =>
-                        prev ? { ...prev, postcode: e.target.value } : undefined
-                      )
-                    }
-                  />
-                </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="c_country">País</Label>
-                  <Input
-                    id="c_country"
-                    name="c_country"
-                    value={selectedClient?.country || ""}
-                    onChange={(e) =>
-                      setSelectedClient((prev) =>
-                        prev ? { ...prev, country: e.target.value } : undefined
-                      )
-                    }
-                  />
-                </div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="p-6">
-            <div className="space-y-4">
-              <h3 className="text-lg font-medium">Información emisor</h3>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="grid gap-2">
-                  <Label htmlFor="company_id">Empresa</Label>
-                  <input type="hidden" name="company_id" value={company?.id} />
-                  <Input
-                    value={company?.name || "Cargando empresa..."}
-                    readOnly
-                    className="bg-muted"
-                  />
-                </div>
-
-                <div className="grid gap-2">
-                  <Label htmlFor="nif">NIF de la Empresa</Label>
-                  <Input
-                    id="nif"
-                    name="nif"
-                    value={company?.nif || ""}
-                    readOnly
-                    className="bg-muted"
-                  />
-                </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="cp">Código postal</Label>
-                  <Input
-                    id="cp"
-                    name="cp"
-                    value={company?.postcode || ""}
-                    readOnly
-                    className="bg-muted"
-                  />
-                </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="address">Dirección</Label>
-                  <Input
-                    id="address"
-                    name="address"
-                    value={company?.address || ""}
-                    readOnly
-                    className="bg-muted"
-                  />
-                </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="city">Ciudad</Label>
-                  <Input
-                    id="city"
-                    name="city"
-                    value={company?.city || ""}
-                    readOnly
-                    className="bg-muted"
-                  />
-                </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="country">País</Label>
-                  <Input
-                    id="country"
-                    name="country"
-                    value={company?.country || ""}
-                    readOnly
-                    className="bg-muted"
-                  />
-                </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="email">Email</Label>
-                  <Input
-                    id="email"
-                    name="email"
-                    value={company?.email || ""}
-                    readOnly
-                    className="bg-muted"
-                  />
-                </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="phone">Teléfono</Label>
-                  <Input
-                    id="phone"
-                    name="phone"
-                    value={company?.phone || ""}
-                    readOnly
-                    className="bg-muted"
-                  />
-                </div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="p-6">
-            <div className="space-y-4">
-              <h3 className="text-lg font-medium">Detalles Económicos</h3>
-              <div className="grid gap-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="grid gap-2">
-                    <Label htmlFor="subtotal">Base Imponible</Label>
-                    <Input
-                      id="subtotal"
-                      type="number"
-                      step="0.01"
-                      value={formData.subtotal}
-                      onChange={(e) =>
-                        handleChange(
-                          "subtotal",
-                          Number.parseFloat(e.target.value) || 0
-                        )
-                      }
-                      className={errors.subtotal ? "border-red-500" : ""}
-                    />
-                    {errors.subtotal && (
-                      <p className="text-red-500 text-sm">{errors.subtotal}</p>
-                    )}
-                  </div>
-                  <div className="grid gap-2">
-                    <Label htmlFor="currency">Moneda</Label>
-                    <Select
-                      value={formData.currency}
-                      onValueChange={(value) => handleChange("currency", value)}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Seleccionar moneda" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="EUR">EUR</SelectItem>
-                        <SelectItem value="USD">USD</SelectItem>
-                      </SelectContent>
-                    </Select>
+        <TabsContent value="form">
+          <div className="grid gap-6 py-4">
+            <Card>
+              <CardContent className="p-6">
+                <div className="space-y-4">
+                  <h3 className="text-lg font-medium">Información Básica</h3>
+                  <div className="grid gap-4">
+                    <div className="grid gap-2">
+                      <Label htmlFor="invoice_type">Tipo de Factura</Label>
+                      <Select
+                        value={invoiceType}
+                        onValueChange={(value: 'standard' | 'rectifying') => {
+                          setInvoiceType(value);
+                          setSelectedSeries("");
+                        }}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Seleccionar tipo" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="standard">Estándar</SelectItem>
+                          <SelectItem value="rectifying">Rectificativa</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="grid gap-2">
+                      <Label htmlFor="series_id">Serie de Facturación</Label>
+                      <Input
+                        value={series.find(s => s.id === selectedSeries)?.serie_format || ''}
+                        readOnly
+                        className={`bg-muted ${seriesError ? 'border-red-500' : ''}`}
+                      />
+                      {seriesError && (
+                        <p className="text-red-500 text-sm">{seriesError}</p>
+                      )}
+                    </div>
                   </div>
                 </div>
+              </CardContent>
+            </Card>
 
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="grid gap-2">
-                    <Label htmlFor="tax_rate">Tipo de IVA (%)</Label>
-                    <Input
-                      id="tax_rate"
-                      type="number"
-                      step="0.01"
-                      value={formData.tax_rate}
-                      onChange={(e) =>
-                        handleChange(
-                          "tax_rate",
-                          Number.parseFloat(e.target.value) || 0
-                        )
-                      }
-                    />
-                  </div>
-                  <div className="grid gap-2">
-                    <Label htmlFor="tax_amount">Importe IVA</Label>
-                    <Input
-                      id="tax_amount"
-                      type="number"
-                      step="0.01"
-                      value={formData.tax_amount}
-                      disabled
-                    />
+            <Card>
+              <CardContent className="p-6">
+                <div className="space-y-4">
+                  <h3 className="text-lg font-medium">Cliente</h3>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="grid gap-2">
+                      <Label htmlFor="client_id">Cliente</Label>
+                      <Select
+                        name="client_id"
+                        value={formData.client_id}
+                        onValueChange={handleClientChange}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Selecciona un cliente" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {clients.map((client) => (
+                            <SelectItem key={client.id} value={client.id}>
+                              {client.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      {errors.client_id && (
+                        <p className="text-red-500 text-sm">{errors.client_id}</p>
+                      )}
+                    </div>
+
+                    <div className="grid gap-2">
+                      <Label htmlFor="c_nif">NIF</Label>
+                      <Input
+                        id="c_nif"
+                        name="c_nif"
+                        value={selectedClient?.nif || ""}
+                        onChange={(e) =>
+                          setSelectedClient((prev) =>
+                            prev ? { ...prev, nif: e.target.value } : prev
+                          )
+                        }
+                      />
+                    </div>
+                    <div className="grid gap-2">
+                      <Label htmlFor="c_email">Email</Label>
+                      <Input
+                        id="c_email"
+                        name="c_email"
+                        value={selectedClient?.email || ""}
+                        onChange={(e) =>
+                          setSelectedClient((prev) =>
+                            prev ? { ...prev, email: e.target.value } : prev
+                          )
+                        }
+                      />
+                    </div>
+                    <div className="grid gap-2">
+                      <Label htmlFor="c_phone">Teléfono</Label>
+                      <Input
+                        id="c_phone"
+                        name="c_phone"
+                        value={selectedClient?.phone || ""}
+                        onChange={(e) =>
+                          setSelectedClient((prev) =>
+                            prev ? { ...prev, phone: e.target.value } : prev
+                          )
+                        }
+                      />
+                    </div>
+                    <div className="grid gap-2">
+                      <Label htmlFor="c_address">Dirección</Label>
+                      <Input
+                        id="c_address"
+                        name="c_address"
+                        value={selectedClient?.address || ""}
+                        onChange={(e) =>
+                          setSelectedClient((prev) =>
+                            prev ? { ...prev, address: e.target.value } : prev
+                          )
+                        }
+                      />
+                    </div>
+                    <div className="grid gap-2">
+                      <Label htmlFor="c_city">Ciudad</Label>
+                      <Input
+                        id="c_city"
+                        name="c_city"
+                        value={selectedClient?.city || ""}
+                        onChange={(e) =>
+                          setSelectedClient((prev) =>
+                            prev ? { ...prev, city: e.target.value } : prev
+                          )
+                        }
+                      />
+                    </div>
+                    <div className="grid gap-2">
+                      <Label htmlFor="c_cp">Código postal</Label>
+                      <Input
+                        id="c_cp"
+                        name="c_cp"
+                        value={selectedClient?.postcode || ""}
+                        onChange={(e) =>
+                          setSelectedClient((prev) =>
+                            prev ? { ...prev, postcode: e.target.value } : prev
+                          )
+                        }
+                      />
+                    </div>
+                    <div className="grid gap-2">
+                      <Label htmlFor="c_country">País</Label>
+                      <Input
+                        id="c_country"
+                        name="c_country"
+                        value={selectedClient?.country || ""}
+                        onChange={(e) =>
+                          setSelectedClient((prev) =>
+                            prev ? { ...prev, country: e.target.value } : prev
+                          )
+                        }
+                      />
+                    </div>
                   </div>
                 </div>
+              </CardContent>
+            </Card>
 
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="grid gap-2">
-                    <Label htmlFor="irpf_rate">Retención IRPF (%)</Label>
-                    <Input
-                      id="irpf_rate"
-                      type="number"
-                      step="0.01"
-                      value={formData.irpf_rate}
-                      onChange={(e) =>
-                        handleChange(
-                          "irpf_rate",
-                          Number.parseFloat(e.target.value) || 0
-                        )
-                      }
-                      disabled={!selectedClient?.applies_irpf}
-                    />
-                  </div>
-                  <div className="grid gap-2">
-                    <Label htmlFor="irpf_amount">Importe IRPF</Label>
-                    <Input
-                      id="irpf_amount"
-                      type="number"
-                      step="0.01"
-                      value={formData.irpf_amount}
-                      disabled
-                    />
+            <Card>
+              <CardContent className="p-6">
+                <div className="space-y-4">
+                  <h3 className="text-lg font-medium">Información emisor</h3>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="grid gap-2">
+                      <Label htmlFor="company_id">Empresa</Label>
+                      <input type="hidden" name="company_id" value={company?.id} />
+                      <Input
+                        value={company?.name || "Cargando empresa..."}
+                        readOnly
+                        className="bg-muted"
+                      />
+                    </div>
+
+                    <div className="grid gap-2">
+                      <Label htmlFor="nif">NIF de la Empresa</Label>
+                      <Input
+                        id="nif"
+                        name="nif"
+                        value={company?.nif || ""}
+                        readOnly
+                        className="bg-muted"
+                      />
+                    </div>
+                    <div className="grid gap-2">
+                      <Label htmlFor="cp">Código postal</Label>
+                      <Input
+                        id="cp"
+                        name="cp"
+                        value={company?.postcode || ""}
+                        readOnly
+                        className="bg-muted"
+                      />
+                    </div>
+                    <div className="grid gap-2">
+                      <Label htmlFor="address">Dirección</Label>
+                      <Input
+                        id="address"
+                        name="address"
+                        value={company?.address || ""}
+                        readOnly
+                        className="bg-muted"
+                      />
+                    </div>
+                    <div className="grid gap-2">
+                      <Label htmlFor="city">Ciudad</Label>
+                      <Input
+                        id="city"
+                        name="city"
+                        value={company?.city || ""}
+                        readOnly
+                        className="bg-muted"
+                      />
+                    </div>
+                    <div className="grid gap-2">
+                      <Label htmlFor="country">País</Label>
+                      <Input
+                        id="country"
+                        name="country"
+                        value={company?.country || ""}
+                        readOnly
+                        className="bg-muted"
+                      />
+                    </div>
+                    <div className="grid gap-2">
+                      <Label htmlFor="email">Email</Label>
+                      <Input
+                        id="email"
+                        name="email"
+                        value={company?.email || ""}
+                        readOnly
+                        className="bg-muted"
+                      />
+                    </div>
+                    <div className="grid gap-2">
+                      <Label htmlFor="phone">Teléfono</Label>
+                      <Input
+                        id="phone"
+                        name="phone"
+                        value={company?.phone || ""}
+                        readOnly
+                        className="bg-muted"
+                      />
+                    </div>
                   </div>
                 </div>
+              </CardContent>
+            </Card>
 
-                <div className="grid gap-2">
-                  <Label htmlFor="total_amount">Total</Label>
-                  <Input
-                    id="total_amount"
-                    type="number"
-                    step="0.01"
-                    value={formData.total_amount}
-                    disabled
-                  />
+            <Card>
+              <CardContent className="p-6">
+                <div className="space-y-4">
+                  <h3 className="text-lg font-medium">Detalles Económicos</h3>
+                  <div className="grid gap-4">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="grid gap-2">
+                        <Label htmlFor="subtotal">Base Imponible</Label>
+                        <Input
+                          id="subtotal"
+                          type="number"
+                          step="0.01"
+                          value={formData.subtotal}
+                          onChange={(e) =>
+                            handleChange(
+                              "subtotal",
+                              Number.parseFloat(e.target.value) || 0
+                            )
+                          }
+                          className={errors.subtotal ? "border-red-500" : ""}
+                        />
+                        {errors.subtotal && (
+                          <p className="text-red-500 text-sm">{errors.subtotal}</p>
+                        )}
+                      </div>
+                      <div className="grid gap-2">
+                        <Label htmlFor="currency">Moneda</Label>
+                        <Select
+                          value={formData.currency}
+                          onValueChange={(value) => handleChange("currency", value)}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Seleccionar moneda" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="EUR">EUR</SelectItem>
+                            <SelectItem value="USD">USD</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="grid gap-2">
+                        <Label htmlFor="tax_rate">Tipo de IVA (%)</Label>
+                        <Input
+                          id="tax_rate"
+                          type="number"
+                          step="0.01"
+                          value={formData.tax_rate}
+                          onChange={(e) =>
+                            handleChange(
+                              "tax_rate",
+                              Number.parseFloat(e.target.value) || 0
+                            )
+                          }
+                        />
+                      </div>
+                      <div className="grid gap-2">
+                        <Label htmlFor="tax_amount">Importe IVA</Label>
+                        <Input
+                          id="tax_amount"
+                          type="number"
+                          step="0.01"
+                          value={formData.tax_amount}
+                          disabled
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="grid gap-2">
+                        <Label htmlFor="irpf_rate">Retención IRPF (%)</Label>
+                        <Input
+                          id="irpf_rate"
+                          type="number"
+                          step="0.01"
+                          value={formData.irpf_rate}
+                          onChange={(e) =>
+                            handleChange(
+                              "irpf_rate",
+                              Number.parseFloat(e.target.value) || 0
+                            )
+                          }
+                          disabled={!selectedClient?.applies_irpf}
+                        />
+                      </div>
+                      <div className="grid gap-2">
+                        <Label htmlFor="irpf_amount">Importe IRPF</Label>
+                        <Input
+                          id="irpf_amount"
+                          type="number"
+                          step="0.01"
+                          value={formData.irpf_amount}
+                          disabled
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid gap-2">
+                      <Label htmlFor="total_amount">Total</Label>
+                      <Input
+                        id="total_amount"
+                        type="number"
+                        step="0.01"
+                        value={formData.total_amount}
+                        disabled
+                      />
+                    </div>
+                  </div>
                 </div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+              </CardContent>
+            </Card>
+          </div>
+        </TabsContent>
 
-      <DialogFooter>
+        <TabsContent value="preview" className="w-full h-[800px] border rounded-lg">
+          <PDFViewer className="w-full h-full">
+            <InvoicePDF 
+              invoice={{
+                ...formData,
+                client: selectedClient,
+                company,
+                invoice_number: series.find(s => s.id === selectedSeries)?.serie_format || '',
+                status: invoice?.status || 'draft',
+                created_at: invoice?.created_at || new Date().toISOString(),
+                updated_at: new Date().toISOString(),
+                id: invoice?.id || '',
+                user_id: invoice?.user_id || '',
+              }} 
+            />
+          </PDFViewer>
+        </TabsContent>
+      </Tabs>
+
+      <DialogFooter className="mt-4">
         <Button type="button" variant="outline" onClick={onCancel}>
           Cancelar
         </Button>

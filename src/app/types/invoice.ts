@@ -51,3 +51,10 @@ export interface InvoiceFormData
   > {
   // Form specific fields can be added here
 }
+
+export type InvoiceStatus = 
+  | "draft"      // Borrador inicial
+  | "review"     // En revisión 
+  | "ready"      // Lista para finalizar
+  | "final"      // Finalizada/definitiva
+  | "canceled";  // Anulada
