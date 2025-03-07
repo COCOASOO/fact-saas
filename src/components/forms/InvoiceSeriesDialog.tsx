@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect } from "react";
 import {
   Dialog,
   DialogContent,
@@ -15,9 +15,17 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { CreateInvoiceSeriesDTO, InvoiceSeries } from '@/app/types/invoice-series';
-import { addInvoiceSeries, updateInvoiceSeries, checkSeriesHasInvoices, checkDuplicateFormat } from '@/app/routes/invoice_series/route';
-import { createClient } from '@/lib/supabase/supabaseClient';
+import {
+  CreateInvoiceSeriesDTO,
+  InvoiceSeries,
+} from "@/app/types/invoice-series";
+import {
+  addInvoiceSeries,
+  updateInvoiceSeries,
+  checkSeriesHasInvoices,
+  checkDuplicateFormat,
+} from "@/app/routes/invoice_series/route";
+import { createClient } from "@/lib/supabase/supabaseClient";
 
 const supabase = createClient();
 
@@ -35,8 +43,8 @@ export function InvoiceSeriesDialog({
   onSuccess,
 }: InvoiceSeriesDialogProps) {
   const [formData, setFormData] = useState<CreateInvoiceSeriesDTO>({
-    serie_format: '',
-    type: 'standard',
+    serie_format: "",
+    type: "standard",
     default: false,
     invoice_number: 0,
   });
@@ -55,8 +63,8 @@ export function InvoiceSeriesDialog({
       checkSeriesHasInvoices(series.id).then(setHasInvoices);
     } else {
       setFormData({
-        serie_format: '',
-        type: 'standard',
+        serie_format: "",
+        type: "standard",
         default: false,
         invoice_number: 0,
       });
@@ -66,35 +74,37 @@ export function InvoiceSeriesDialog({
 
   const validateForm = async () => {
     const newErrors: Record<string, string> = {};
-    
+
     if (!formData.serie_format) {
-      newErrors.serie_format = 'El formato es requerido';
+      newErrors.serie_format = "El formato es requerido";
     } else {
       // Validar que no contenga espacios
       if (/\s/.test(formData.serie_format)) {
-        newErrors.serie_format = 'El formato no puede contener espacios';
+        newErrors.serie_format = "El formato no puede contener espacios";
       }
       // Validar que contenga exactamente 2 o 4 % para el año
       else if (!/(%%|%%%%)/.test(formData.serie_format)) {
-        newErrors.serie_format = 'El formato debe incluir exactamente 2 o 4 símbolos % para el año (ejemplo: %% o %%%%)';
+        newErrors.serie_format =
+          "El formato debe incluir exactamente 2 o 4 símbolos % para el año (ejemplo: %% o %%%%)";
       }
       // Validar que contenga al menos tres #
       else if ((formData.serie_format.match(/#/g) || []).length < 3) {
-        newErrors.serie_format = 'El formato debe incluir al menos tres # para la numeración';
+        newErrors.serie_format =
+          "El formato debe incluir al menos tres # para la numeración";
       }
       // Verificar formato duplicado si no hay otros errores
       else {
         try {
           const isDuplicate = await checkDuplicateFormat(
-            formData.serie_format, 
+            formData.serie_format,
             series?.id
           );
           if (isDuplicate) {
-            newErrors.serie_format = 'Ya existe una serie con este formato';
+            newErrors.serie_format = "Ya existe una serie con este formato";
           }
         } catch (error) {
-          console.error('Error checking duplicate format:', error);
-          newErrors.serie_format = 'Error al validar el formato';
+          console.error("Error checking duplicate format:", error);
+          newErrors.serie_format = "Error al validar el formato";
         }
       }
     }
@@ -105,7 +115,7 @@ export function InvoiceSeriesDialog({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!(await validateForm())) return;
 
     try {
@@ -116,10 +126,10 @@ export function InvoiceSeriesDialog({
       }
       onSuccess();
     } catch (error) {
-      console.error('Error saving series:', error);
+      console.error("Error saving series:", error);
       if (error instanceof Error) {
         setErrors({
-          serie_format: error.message
+          serie_format: error.message,
         });
       }
     }
@@ -129,12 +139,17 @@ export function InvoiceSeriesDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>
-            {series ? 'Editar Serie' : 'Nueva Serie'}
-          </DialogTitle>
+          <DialogTitle>{series ? "Editar Serie" : "Nueva Serie"}</DialogTitle>
           {hasInvoices && (
             <p className="text-sm text-yellow-600">
-              Esta serie contiene facturas. Solo se puede modificar si es la serie por defecto.
+              Esta serie contiene facturas. Solo se puede modificar si es la
+              serie por defecto.
+            </p>
+          )}
+          {!series && (
+            <p className="text-sm text-blue-600">
+              Al crear una nueva serie, se establecerá automáticamente como
+              por defecto.
             </p>
           )}
         </DialogHeader>
@@ -145,7 +160,9 @@ export function InvoiceSeriesDialog({
             <Input
               id="serie_format"
               value={formData.serie_format}
-              onChange={(e) => setFormData({ ...formData, serie_format: e.target.value })}
+              onChange={(e) =>
+                setFormData({ ...formData, serie_format: e.target.value })
+              }
               placeholder="Ej: FACT-%%%%-###"
               disabled={hasInvoices}
             />
@@ -153,14 +170,24 @@ export function InvoiceSeriesDialog({
               <p className="text-sm text-red-500">{errors.serie_format}</p>
             )}
             <div className="text-sm text-muted-foreground space-y-1">
-              <p><strong>Formato de serie:</strong></p>
+              <p>
+                <strong>Formato de serie:</strong>
+              </p>
               <ul className="list-disc pl-4 space-y-1">
-                <li><code>%%</code>: Últimos dos dígitos del año (ej: 25)</li>
-                <li><code>%%%%</code>: Año completo (ej: 2025)</li>
-                <li><code>###</code>: Número secuencial (mínimo 3 dígitos)</li>
+                <li>
+                  <code>%%</code>: Últimos dos dígitos del año (ej: 25)
+                </li>
+                <li>
+                  <code>%%%%</code>: Año completo (ej: 2025)
+                </li>
+                <li>
+                  <code>###</code>: Número secuencial (mínimo 3 dígitos)
+                </li>
                 <li>No se permiten espacios en el formato</li>
               </ul>
-              <p><em>Ejemplos:</em></p>
+              <p>
+                <em>Ejemplos:</em>
+              </p>
               <ul className="list-disc pl-4 space-y-1">
                 <li>FACT-%%-### → FACT-25-001</li>
                 <li>FACT-%%%%-### → FACT-2025-001</li>
@@ -172,7 +199,12 @@ export function InvoiceSeriesDialog({
             <Label htmlFor="type">Tipo</Label>
             <Select
               value={formData.type}
-              onValueChange={(value) => setFormData({ ...formData, type: value as 'standard' | 'rectifying' })}
+              onValueChange={(value) =>
+                setFormData({
+                  ...formData,
+                  type: value as "standard" | "rectifying",
+                })
+              }
               disabled={hasInvoices}
             >
               <SelectTrigger>
@@ -186,12 +218,14 @@ export function InvoiceSeriesDialog({
           </div>
 
           <div className="flex justify-end space-x-2">
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => onOpenChange(false)}
+            >
               Cancelar
             </Button>
-            <Button type="submit">
-              {series ? 'Guardar' : 'Crear'}
-            </Button>
+            <Button type="submit">{series ? "Guardar" : "Crear"}</Button>
           </div>
         </form>
       </DialogContent>

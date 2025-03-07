@@ -1,6 +1,6 @@
-'use client';
+"use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Table,
@@ -11,10 +11,15 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Plus, Pencil, Trash2, Search } from "lucide-react";
-import { InvoiceSeries } from '@/app/types/invoice-series';
-import { getInvoiceSeries, deleteInvoiceSeries, checkSeriesHasInvoices, updateInvoiceSeries } from '@/app/routes/invoice_series/route';
-import { InvoiceSeriesDialog } from '@/components/forms/InvoiceSeriesDialog';
-import { Toaster, toast } from 'sonner';
+import { InvoiceSeries } from "@/app/types/invoice-series";
+import {
+  getInvoiceSeries,
+  deleteInvoiceSeries,
+  checkSeriesHasInvoices,
+  updateInvoiceSeries,
+} from "@/app/routes/invoice_series/route";
+import { InvoiceSeriesDialog } from "@/components/forms/InvoiceSeriesDialog";
+import { Toaster, toast } from "sonner";
 import {
   Dialog,
   DialogContent,
@@ -36,11 +41,16 @@ import { Switch } from "@/components/ui/switch";
 export default function InvoiceSeriesPage() {
   const [series, setSeries] = useState<InvoiceSeries[]>([]);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [currentSeries, setCurrentSeries] = useState<InvoiceSeries | null>(null);
+  const [currentSeries, setCurrentSeries] = useState<InvoiceSeries | null>(
+    null
+  );
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
-  const [seriesForDeletion, setSeriesForDeletion] = useState<InvoiceSeries | null>(null);
+  const [seriesForDeletion, setSeriesForDeletion] =
+    useState<InvoiceSeries | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
-  const [typeFilter, setTypeFilter] = useState<"all" | "standard" | "rectifying">("all");
+  const [typeFilter, setTypeFilter] = useState<
+    "all" | "standard" | "rectifying"
+  >("all");
 
   useEffect(() => {
     loadSeries();
@@ -52,11 +62,11 @@ export default function InvoiceSeriesPage() {
       if (Array.isArray(data)) {
         setSeries(data);
       } else {
-        console.error('Data received is not an array:', data);
+        console.error("Data received is not an array:", data);
         toast.error("Error al cargar las series");
       }
     } catch (error) {
-      console.error('Error loading series:', error);
+      console.error("Error loading series:", error);
       toast.error("No se pudieron cargar las series");
     }
   };
@@ -64,7 +74,6 @@ export default function InvoiceSeriesPage() {
   const handleCreateSeries = () => {
     setCurrentSeries(null);
     setIsDialogOpen(true);
-    toast.info("La nueva serie se establecerá como predeterminada para su tipo");
   };
 
   const handleEditSeries = async (series: InvoiceSeries) => {
@@ -100,8 +109,10 @@ export default function InvoiceSeriesPage() {
       loadSeries();
       setIsDeleteDialogOpen(false);
     } catch (error) {
-      console.error('Error deleting series:', error);
-      toast.error(error instanceof Error ? error.message : "Error al eliminar la serie");
+      console.error("Error deleting series:", error);
+      toast.error(
+        error instanceof Error ? error.message : "Error al eliminar la serie"
+      );
     }
   };
 
@@ -110,22 +121,22 @@ export default function InvoiceSeriesPage() {
       try {
         // Primero obtenemos todas las series del mismo tipo
         const seriesOfSameType = filteredAndSortedSeries.filter(
-          s => s.type === series.type && s.id !== series.id
+          (s) => s.type === series.type && s.id !== series.id
         );
 
         // Desactivamos la serie que estaba por defecto
-        const defaultSeries = seriesOfSameType.find(s => s.default);
+        const defaultSeries = seriesOfSameType.find((s) => s.default);
         if (defaultSeries) {
           await updateInvoiceSeries(defaultSeries.id, { default: false });
         }
 
         // Activamos la nueva serie por defecto
         await updateInvoiceSeries(series.id, { default: true });
-        
+
         toast.success("Serie establecida como predeterminada");
         loadSeries();
       } catch (error) {
-        console.error('Error updating default series:', error);
+        console.error("Error updating default series:", error);
         toast.error("Error al establecer la serie como predeterminada");
       }
     }
@@ -134,7 +145,9 @@ export default function InvoiceSeriesPage() {
   // Filter and sort series
   const filteredAndSortedSeries = series
     .filter((serie) => {
-      const matchesSearch = serie.serie_format.toLowerCase().includes(searchQuery.toLowerCase());
+      const matchesSearch = serie.serie_format
+        .toLowerCase()
+        .includes(searchQuery.toLowerCase());
       const matchesType = typeFilter === "all" || serie.type === typeFilter;
       return matchesSearch && matchesType;
     })
@@ -169,7 +182,7 @@ export default function InvoiceSeriesPage() {
               onChange={(e) => setSearchQuery(e.target.value)}
             />
           </div>
-          
+
           <Select
             value={typeFilter}
             onValueChange={(value) => setTypeFilter(value as typeof typeFilter)}
@@ -200,21 +213,29 @@ export default function InvoiceSeriesPage() {
             <TableBody>
               {filteredAndSortedSeries.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">
-                    {series.length === 0 
+                  <TableCell
+                    colSpan={6}
+                    className="h-24 text-center text-muted-foreground"
+                  >
+                    {series.length === 0
                       ? "No hay series de facturación definidas"
                       : "No se encontraron series que coincidan con los filtros"}
                   </TableCell>
                 </TableRow>
               ) : (
                 filteredAndSortedSeries.map((serie) => (
-                  <TableRow key={serie.id} className={serie.default ? "bg-muted/50" : ""}>
+                  <TableRow
+                    key={serie.id}
+                    className={serie.default ? "bg-muted/50" : ""}
+                  >
                     <TableCell>{serie.serie_format}</TableCell>
                     <TableCell>
-                      {serie.type === 'standard' ? 'Estándar' : 'Rectificativa'}
+                      {serie.type === "standard" ? "Estándar" : "Rectificativa"}
                     </TableCell>
                     <TableCell>{serie.invoice_number}</TableCell>
-                    <TableCell>{serie.last_invoice_number || 'Sin facturas'}</TableCell>
+                    <TableCell>
+                      {serie.last_invoice_number || "Sin facturas"}
+                    </TableCell>
                     <TableCell>
                       <Switch
                         checked={serie.default}
@@ -227,9 +248,19 @@ export default function InvoiceSeriesPage() {
                         <Button
                           variant="ghost"
                           size="icon"
-                          disabled={serie.has_invoices || serie.last_invoice_number !== null}
-                          className={serie.has_invoices || serie.last_invoice_number !== null ? 'opacity-50 cursor-not-allowed' : ''}
-                          onClick={() => !serie.has_invoices && handleEditSeries(serie)}
+                          disabled={
+                            serie.has_invoices ||
+                            serie.last_invoice_number !== null
+                          }
+                          className={
+                            serie.has_invoices ||
+                            serie.last_invoice_number !== null
+                              ? "opacity-50 cursor-not-allowed"
+                              : ""
+                          }
+                          onClick={() =>
+                            !serie.has_invoices && handleEditSeries(serie)
+                          }
                           title={
                             serie.has_invoices
                               ? "No se puede editar una serie que contiene facturas"
@@ -241,9 +272,19 @@ export default function InvoiceSeriesPage() {
                         <Button
                           variant="ghost"
                           size="icon"
-                          className={`text-red-500 ${(serie.default || serie.has_invoices || serie.last_invoice_number !== null) ? 'opacity-50 cursor-not-allowed' : ''}`}
+                          className={`text-red-500 ${
+                            serie.default ||
+                            serie.has_invoices ||
+                            serie.last_invoice_number !== null
+                              ? "opacity-50 cursor-not-allowed"
+                              : ""
+                          }`}
                           onClick={() => handleDeleteClick(serie)}
-                          disabled={serie.default ||serie.has_invoices || serie.last_invoice_number !== null}
+                          disabled={
+                            serie.default ||
+                            serie.has_invoices ||
+                            serie.last_invoice_number !== null
+                          }
                           title={
                             serie.default
                               ? "No se puede eliminar una serie por defecto"
@@ -270,16 +311,23 @@ export default function InvoiceSeriesPage() {
           <DialogHeader>
             <DialogTitle>Eliminar Serie</DialogTitle>
             <DialogDescription>
-              ¿Estás seguro de que quieres eliminar la serie {seriesForDeletion?.serie_format}? Esta acción no se puede deshacer.
+              ¿Estás seguro de que quieres eliminar la serie{" "}
+              {seriesForDeletion?.serie_format}? Esta acción no se puede
+              deshacer.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setIsDeleteDialogOpen(false)}>
+            <Button
+              variant="outline"
+              onClick={() => setIsDeleteDialogOpen(false)}
+            >
               Cancelar
             </Button>
-            <Button 
-              variant="destructive" 
-              onClick={() => seriesForDeletion && handleDeleteSeries(seriesForDeletion)}
+            <Button
+              variant="destructive"
+              onClick={() =>
+                seriesForDeletion && handleDeleteSeries(seriesForDeletion)
+              }
             >
               Eliminar
             </Button>
@@ -294,9 +342,10 @@ export default function InvoiceSeriesPage() {
         onSuccess={() => {
           setIsDialogOpen(false);
           loadSeries();
-          toast.success(currentSeries 
-            ? "Serie actualizada correctamente" 
-            : "Serie creada correctamente y establecida como predeterminada"
+          toast.success(
+            currentSeries
+              ? "Serie actualizada correctamente"
+              : "Serie creada correctamente y establecida como predeterminada"
           );
         }}
       />
