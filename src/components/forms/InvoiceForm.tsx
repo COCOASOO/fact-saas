@@ -28,8 +28,8 @@ import { addInvoice } from "@/app/routes/invoices/route";
 import { getInvoiceSeries } from '@/app/routes/invoice_series/route';
 import { InvoiceSeries } from '@/app/types/invoice-series';
 import { PDFViewer } from "@react-pdf/renderer";
-import { InvoicePDF } from "../InvoicePDF";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { InvoicePreviewWrapper } from "@/components/invoicePDF/InvoicePreviewWrapper";
 
 interface InvoiceFormProps {
   invoice?: Invoice;
@@ -651,21 +651,19 @@ export function InvoiceForm({ invoice, onSubmit, onCancel }: InvoiceFormProps) {
         </TabsContent>
 
         <TabsContent value="preview" className="w-full h-[800px] border rounded-lg">
-          <PDFViewer className="w-full h-full">
-            <InvoicePDF 
-              invoice={{
-                ...formData,
-                client: selectedClient,
-                company,
-                invoice_number: series.find(s => s.id === selectedSeries)?.serie_format || '',
-                status: invoice?.status || 'draft',
-                created_at: invoice?.created_at || new Date().toISOString(),
-                updated_at: new Date().toISOString(),
-                id: invoice?.id || '',
-                user_id: invoice?.user_id || '',
-              }} 
-            />
-          </PDFViewer>
+          <InvoicePreviewWrapper 
+            invoice={{
+              ...formData,
+              client: selectedClient,
+              company,
+              invoice_number: series.find(s => s.id === selectedSeries)?.serie_format || '',
+              status: invoice?.status || 'draft',
+              created_at: invoice?.created_at || new Date().toISOString(),
+              updated_at: new Date().toISOString(),
+              id: invoice?.id || '',
+              user_id: invoice?.user_id || '',
+            }}
+          />
         </TabsContent>
       </Tabs>
 

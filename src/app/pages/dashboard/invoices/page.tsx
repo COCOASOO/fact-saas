@@ -34,7 +34,9 @@ import { getInvoiceSeries } from "@/app/routes/invoice_series/route"
 import type { InvoiceSeries } from "@/app/types/invoice-series"
 import { pdf } from "@react-pdf/renderer"
 import { saveAs } from "file-saver"
-import { InvoicePDF } from "@/components/InvoicePDF"
+import html2pdf from "html2pdf.js"
+import { InvoicePreview } from "@/components/invoicePDF/InvoicePreview"
+import { createRoot } from "react-dom/client"
 
 const getStatusColor = (status: Invoice["status"]) => {
   switch (status) {
@@ -196,38 +198,76 @@ export default function InvoicesPage() {
   // Handle finalizar confirmation
   const handleFinalizarConfirmation = async (invoice: Invoice) => {
     try {
-      // Generar el PDF
-      const blob = await pdf(<InvoicePDF invoice={invoice} />).toBlob();
+      // Crear un elemento temporal para renderizar la factura
+      const tempElement = document.createElement("div");
+      document.body.appendChild(tempElement);
       
-      // Subir el PDF a tu almacenamiento (ejemplo con FormData)
-      const formData = new FormData();
-      formData.append('pdf', blob, `${invoice.invoice_number}.pdf`);
+      // Renderizar la factura en el elemento temporal usando ReactDOM
+      const root = createRoot(tempElement);
       
-      // Aquí deberías implementar la lógica para subir el PDF a tu servidor/storage
-      const pdfUrl = await uploadPDF(formData);
-      
-      // Actualizar la factura con la URL del PDF y el estado final
-      const finalizedInvoice = await updateInvoice(invoice.id, { 
-        ...invoice, 
-        status: "final",
-        pdf_url: pdfUrl
+      // Promise para esperar a que se complete el renderizado
+      await new Promise<void>(resolve => {
+        root.render(
+          <div style={{ position: "absolute", left: "-9999px" }}>
+            <InvoicePreview 
+              ref={(el) => {
+                if (el) {
+                  // Configuración de html2pdf
+                  const options = {
+                    margin: 10,
+                    filename: `${invoice.invoice_number}.pdf`,
+                    image: { type: "jpeg", quality: 0.98 },
+                    html2canvas: { scale: 2, useCORS: true },
+                    jsPDF: { unit: "mm", format: "a4", orientation: "portrait" }
+                  };
+
+                  // Generar el PDF
+                  html2pdf()
+                    .from(el)
+                    .set(options)
+                    .outputPdf('blob')
+                    .then(async (blob: Blob) => {
+                      // Subir el PDF a tu almacenamiento
+                      const formData = new FormData();
+                      formData.append('pdf', blob, `${invoice.invoice_number}.pdf`);
+                      
+                      // Aquí deberías implementar la lógica para subir el PDF a tu servidor/storage
+                      const pdfUrl = await uploadPDF(formData);
+                      
+                      // Actualizar la factura con la URL del PDF y el estado final
+                      const finalizedInvoice = await updateInvoice(invoice.id, { 
+                        ...invoice, 
+                        status: "final",
+                        pdf_url: pdfUrl
+                      });
+                      
+                      // Actualizar el estado local
+                      setInvoices(invoices.map(inv => 
+                        inv.id === finalizedInvoice.id ? finalizedInvoice : inv
+                      ));
+                      
+                      setIsFinalizarDialogOpen(false);
+                      toast.success("Factura finalizada correctamente");
+                      
+                      // Descargar el PDF automáticamente
+                      saveAs(blob, `${invoice.invoice_number}.pdf`);
+                      
+                      // Limpiar
+                      document.body.removeChild(tempElement);
+                      resolve();
+                    });
+                }
+              }}
+              invoice={invoice}
+            />
+          </div>
+        );
       });
-      
-      // Actualizar el estado local
-      setInvoices(invoices.map(inv => 
-        inv.id === finalizedInvoice.id ? finalizedInvoice : inv
-      ));
-      
-      setIsFinalizarDialogOpen(false);
-      toast.success("Factura finalizada correctamente");
-      
-      // Descargar el PDF automáticamente
-      saveAs(blob, `${invoice.invoice_number}.pdf`);
     } catch (error) {
       console.error("Error al finalizar la factura:", error);
       toast.error("Error al finalizar la factura");
     }
-  }
+  };
 
   return (
     <div className="h-full flex-1 flex-col space-y-8 p-8 md:flex">
