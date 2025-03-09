@@ -1,7 +1,6 @@
 import React, { forwardRef } from "react";
 import { Invoice } from "@/app/types/invoice";
 import { formatCurrency, formatDate } from "@/lib/utils/invoice-calculations";
-import { Separator } from "../ui/separator";
 interface InvoicePreviewProps {
   invoice: Invoice;
 }
