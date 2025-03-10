@@ -71,7 +71,6 @@ export async function getUserCompany() {
       .eq("user_id", userId)
       .single();
 
-      console.log("LA COMPANY: ", company)
     return company as Company;
   } catch (error) {
     console.error("❌ Error en getUserCompany:", error);

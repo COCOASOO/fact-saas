@@ -5,23 +5,18 @@ import { getNextInvoiceNumber, updateSeriesInvoiceCount } from "../invoice_serie
 const supabase = createClient()
 
 async function getCurrentUserId() {
-    console.log('🔍 Obteniendo usuario actual...');
     const { data: { user } } = await supabase.auth.getUser()
-    console.log('👤 Usuario auth encontrado:', user);
     
     if (!user) {
         console.error('❌ No hay usuario autenticado');
         throw new Error('No hay usuario autenticado')
     }
-    console.log('✅ ID de usuario:', user.id);
     return user.id
 }
 
 export async function getInvoices() {
-    console.group('📋 getInvoices()');
     try {
         const userId = await getCurrentUserId()
-        console.log('🔍 Buscando facturas para user_id:', userId);
         
         const { data: invoices, error } = await supabase
             .from('invoices')
@@ -42,9 +37,7 @@ export async function getInvoices() {
             created_at: new Date(invoice.created_at).toISOString(),
             updated_at: new Date(invoice.updated_at).toISOString()
         })) as Invoice[]
-        
-        console.log('✅ Facturas encontradas:', formattedInvoices);
-        console.groupEnd();
+
         return formattedInvoices
     } catch (error) {
         console.error('❌ Error en getInvoices:', error);
