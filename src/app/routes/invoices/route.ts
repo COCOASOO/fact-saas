@@ -87,8 +87,8 @@ export async function addInvoice(invoice: Omit<Invoice, 'id' | 'user_id'>): Prom
         // Obtener el siguiente número de factura
         const nextNumber = await getNextInvoiceNumber(invoice.series_id);
         
-        // Extraemos invoice_type para que no se incluya en la inserción
-        const { invoice_type, ...invoiceData } = invoice;
+        // Extraemos invoice_type e items para que no se incluyan en la inserción
+        const { invoice_type, items, ...invoiceData } = invoice;
         
         // Crear la factura directamente con el nuevo número
         const { data, error } = await supabase
@@ -146,7 +146,7 @@ export async function updateInvoice(invoice: Invoice) {
         }
         
         // Eliminamos los campos virtuales antes de enviar a la BD
-        const { client, company, ...invoiceData } = invoice;
+        const { client, company, items, ...invoiceData } = invoice;
         console.log("invoiceData", invoiceData)
         const { error } = await supabase
             .from('invoices')

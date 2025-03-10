@@ -31,6 +31,7 @@ export interface Invoice {
   series_id: string;
   rectifies_invoice_id?: string | null;
   invoice_type: 'standard' | 'rectifying';
+  items?: any[];
 }
 
 export type InvoiceDB = Omit<Invoice, 'client' | 'company'>;
