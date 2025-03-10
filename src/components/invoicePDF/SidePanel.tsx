@@ -30,6 +30,12 @@ export function SidePanel({
         isOpen ? "translate-x-0" : "translate-x-full",
         className
       )}
+      style={{ 
+        position: 'relative', 
+        zIndex: 40,
+        transformStyle: 'preserve-3d' 
+      }}
+      id="side-panel-container"
     >
       {/* Header */}
       <div className="p-6 border-b">
@@ -51,7 +57,7 @@ export function SidePanel({
       </div>
       
       {/* Content */}
-      <div className="flex-1 p-6 overflow-y-auto">
+      <div className="flex-1 p-6 overflow-y-auto" style={{ position: 'relative', zIndex: 45 }}>
         {children}
       </div>
       

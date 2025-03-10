@@ -124,8 +124,8 @@ export async function addInvoice(invoice: Omit<Invoice, 'id' | 'user_id'>): Prom
     }
 }
 
-export async function updateInvoice(id: string, invoice: Invoice) {
-    console.group(`📝 updateInvoice(${id})`);
+export async function updateInvoice(invoice: Invoice) {
+    console.group(`📝 updateInvoice(${invoice.id})`);
     try {
         console.log('Datos a actualizar:', invoice);
         const userId = await getCurrentUserId()
@@ -151,7 +151,7 @@ export async function updateInvoice(id: string, invoice: Invoice) {
         const { error } = await supabase
             .from('invoices')
             .update(invoiceData)
-            .eq('id', id)
+            .eq('id', invoice.id)
             .eq('user_id', userId)
 
         if (error) {
@@ -169,7 +169,7 @@ export async function updateInvoice(id: string, invoice: Invoice) {
                 *,
                 clients!inner(*)
             `)
-            .eq('id', id)
+            .eq('id', invoice.id)
             .single()
 
         console.log('✅ Factura actualizada:', updatedInvoice);

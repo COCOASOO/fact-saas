@@ -3,10 +3,8 @@
 import type React from "react";
 
 import { useState, useEffect, use } from "react";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { DialogFooter } from "@/components/ui/dialog";
 import { Card, CardContent } from "@/components/ui/card";
 import {
   Select,
@@ -24,7 +22,6 @@ import {
 import { getClientById, getClients } from "@/app/routes/clients/route";
 import { Client } from "@/app/types/client";
 import { Company, getUserCompany } from "@/app/routes/companies/route";
-import { addInvoice } from "@/app/routes/invoices/route";
 import { getInvoiceSeries } from '@/app/routes/invoice_series/route';
 import { InvoiceSeries } from '@/app/types/invoice-series';
 
@@ -33,6 +30,7 @@ interface InvoiceFormProps {
   onSubmit: (invoice: Omit<Invoice, 'id' | 'user_id'>) => void;
   onCancel: () => void;
   onFormDataChange?: (data: Omit<Invoice, 'id' | 'user_id' | 'created_at' | 'updated_at'>) => void;
+  initialData?: Omit<Invoice, 'id' | 'user_id' | 'created_at' | 'updated_at'>;
 }
 
 const emptyInvoice: Omit<Invoice, 'id' | 'user_id' | 'created_at' | 'updated_at'> = {
@@ -66,7 +64,8 @@ export function InvoiceForm({
   invoice, 
   onSubmit, 
   onCancel, 
-  onFormDataChange 
+  onFormDataChange, 
+  initialData
 }: InvoiceFormProps) {
   const [formData, setFormData] = useState<Omit<Invoice, 'id' | 'user_id' | 'created_at' | 'updated_at'>>(
     invoice ? {
@@ -241,7 +240,7 @@ export function InvoiceForm({
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = async () => {
+  const handleSubmit = async (onSubmitForm: (invoice: Omit<Invoice, 'id' | 'user_id'>) => void) => {
     if (validateForm()) {
       try {
         const submitData = {
@@ -250,7 +249,7 @@ export function InvoiceForm({
           updated_at: new Date().toISOString(),
         };
         
-        onSubmit(submitData);
+        onSubmitForm(submitData);
       } catch (error) {
         console.error("Error al guardar la factura:", error);
         if (error instanceof Error) {
@@ -277,7 +276,7 @@ export function InvoiceForm({
       id="invoice-form"
       onSubmit={(e) => {
         e.preventDefault();
-        handleSubmit();
+        handleSubmit(onSubmit)(onSubmit);
       }}
       className="space-y-4 mt-2"
     >
@@ -649,6 +648,15 @@ export function InvoiceForm({
           </CardContent>
         </Card>
       </div>
+
+      {/* Botón de submit oculto para ser activado desde fuera */}
+      <button 
+        id="invoice-form-submit" 
+        type="submit" 
+        style={{ display: 'none' }}
+      >
+        Submit
+      </button>
     </form>
   );
 }

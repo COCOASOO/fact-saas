@@ -6,7 +6,9 @@ import { InvoiceForm } from "@/components/forms/InvoiceForm";
 import { InvoicePreviewWrapper } from "@/components/invoicePDF/InvoicePreviewWrapper";
 import { Invoice } from "@/app/types/invoice";
 import { Plus, Eye, Download } from "lucide-react";
-import { addInvoice, updateInvoice } from "@/app/routes/invoices/route";
+import { addInvoice, updateInvoice, getInvoiceById } from "@/app/routes/invoices/route";
+import { getClientById } from "@/app/routes/clients/route";
+import { getUserCompany } from "@/app/routes/companies/route";
 import { toast } from "sonner";
 import html2pdf from "html2pdf.js";
 
@@ -20,7 +22,7 @@ export function InvoicePopupManager({ invoice, onSuccess }: InvoicePopupManagerP
   
   const [isOpen, setIsOpen] = useState(false);
   const [isPreviewVisible, setIsPreviewVisible] = useState(true);
-  const [currentInvoice, setCurrentInvoice] = useState<Invoice | undefined>(invoice);
+  const [currentInvoice, setCurrentInvoice] = useState<Invoice | undefined>(undefined);
   const [formData, setFormData] = useState<any>({
     client_id: '',  // Inicializar siempre con un valor
     items: []       // Inicializar con array vacío
@@ -28,6 +30,8 @@ export function InvoicePopupManager({ invoice, onSuccess }: InvoicePopupManagerP
   const [isSubmitting, setIsSubmitting] = useState(false);
   const previewRef = useRef<HTMLDivElement>(null);
   const formInitialized = useRef(false);
+  const [selectedClient, setSelectedClient] = useState<any>(null);
+  const [companyData, setCompanyData] = useState<any>(null);
 
   // Actualizar el currentInvoice si el prop invoice cambia
   useEffect(() => {
@@ -90,6 +94,44 @@ export function InvoicePopupManager({ invoice, onSuccess }: InvoicePopupManagerP
     }
   }, [isOpen, formData, currentInvoice]);
 
+  // Cargar datos de la compañía
+  useEffect(() => {
+    const loadCompanyData = async () => {
+      try {
+        const company = await getUserCompany();
+        setCompanyData(company);
+        console.log("[InvoicePopupManager] Company data loaded:", company);
+      } catch (error) {
+        console.error("[InvoicePopupManager] Error loading company data:", error);
+      }
+    };
+    
+    if (isOpen) {
+      loadCompanyData();
+    }
+  }, [isOpen]);
+  
+  // Cargar datos completos del cliente cuando cambia formData.client_id
+  useEffect(() => {
+    const loadClientData = async () => {
+      if (formData?.client_id) {
+        try {
+          const client = await getClientById(formData.client_id);
+          setSelectedClient(client);
+          console.log("[InvoicePopupManager] Client data loaded:", client);
+        } catch (error) {
+          console.error("[InvoicePopupManager] Error loading client data:", error);
+        }
+      } else {
+        setSelectedClient(null);
+      }
+    };
+    
+    if (isOpen && formData?.client_id) {
+      loadClientData();
+    }
+  }, [isOpen, formData?.client_id]);
+
   // Manejar cambios en el formulario
   const handleFormDataChange = (data: any) => {
     console.log("[ClientSelector] Form data changed");
@@ -110,17 +152,16 @@ export function InvoicePopupManager({ invoice, onSuccess }: InvoicePopupManagerP
     setFormData(data);
   };
 
-  // Función para abrir el popup
-  const openPopup = () => {
-    console.log("[ClientSelector] Opening popup with clean state");
+  // Función para abrir el popup con un invoice existente o crear uno nuevo
+  const openPopup = (existingInvoice?: Invoice) => {
+    console.log("[InvoicePopupManager] Opening popup with invoice:", existingInvoice);
     
-    // Resetear formInitialized para forzar la reinicialización
-    formInitialized.current = false;
-    
+    // Simplemente pasamos el valor tal cual, que ya es del tipo correcto (Invoice | undefined)
+    setCurrentInvoice(existingInvoice);
+    formInitialized.current = false;  // Cambiado de setFormInitialized({ current: false })
     setIsOpen(true);
   };
 
-  // Función para cerrar el popup
   const closePopup = () => {
     console.log("[Form] Closing popup");
     console.log("[Form] Final form state:", formData);
@@ -223,7 +264,61 @@ export function InvoicePopupManager({ invoice, onSuccess }: InvoicePopupManagerP
       });
   };
 
-  // Renderizado condicional del footer del panel
+  // Crear un objeto completo para el preview
+  const getPreviewData = () => {
+    if (!formData) {
+      console.log("No form data available for preview");
+      return undefined;
+    }
+    
+    // Nos aseguramos de que items siempre sea un array
+    const items = Array.isArray(formData.items) ? formData.items : [];
+    
+    // Construir la factura con los datos necesarios para el preview
+    const previewData = {
+      ...formData,
+      items: items,
+      id: currentInvoice?.id || '',
+      user_id: currentInvoice?.user_id || '',
+      created_at: currentInvoice?.created_at || new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      // Añadir explícitamente los objetos completos para el preview
+      client: selectedClient || {},
+      company: companyData || {}
+    } as Invoice; // Forzar el tipo para evitar errores
+    
+    console.log("Generated preview data:", previewData);
+    
+    return previewData;
+  };
+
+  // Determinar si hay suficientes datos para mostrar el preview
+  const shouldShowPreview = () => {
+    return isPreviewVisible && formData;
+  };
+
+  // Añadir este useEffect
+  useEffect(() => {
+    // Agregar un estilo dinámico para asegurar que los selects funcionen en modales
+    if (isOpen) {
+      const style = document.createElement('style');
+      style.id = 'invoice-popup-select-fix';
+      style.innerHTML = `
+        [role="listbox"],
+        [data-radix-popper-content-wrapper] {
+          z-index: 300 !important;
+        }
+      `;
+      document.head.appendChild(style);
+      
+      return () => {
+        const styleElem = document.getElementById('invoice-popup-select-fix');
+        if (styleElem) styleElem.remove();
+      };
+    }
+  }, [isOpen]);
+
+  // Actualizar el botón de footer para que envíe el formulario
   const formFooter = (
     <div className="flex justify-between w-full">
       <Button 
@@ -235,65 +330,29 @@ export function InvoicePopupManager({ invoice, onSuccess }: InvoicePopupManagerP
       </Button>
       
       <Button 
-        type="submit"
+        type="button"  // Cambiado de "submit" a "button"
         disabled={isSubmitting}
-        onClick={() => document.getElementById('invoice-form-submit')?.click()}
+        onClick={() => {
+          // Buscar el botón de submit en el formulario y hacer clic en él
+          const submitButton = document.getElementById('invoice-form-submit');
+          if (submitButton) {
+            submitButton.click();
+          }
+        }}
       >
         {isSubmitting ? 'Guardando...' : (currentInvoice ? 'Actualizar' : 'Crear')}
       </Button>
     </div>
   );
 
-  // Crear un objeto completo para el preview
-  const getPreviewData = () => {
-    if (!formData) {
-      console.log("No form data available for preview");
-      return null;
-    }
-    
-    // Nos aseguramos de que items siempre sea un array
-    const items = Array.isArray(formData.items) ? formData.items : [];
-    
-    const previewData = {
-      ...formData,
-      items: items,
-      id: currentInvoice?.id || '',
-      user_id: currentInvoice?.user_id || '',
-      created_at: currentInvoice?.created_at || new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    };
-    
-    console.log("Generated preview data:", previewData);
-    
-    // Verificación de campos críticos
-    if (!previewData.client_id) {
-      console.warn("Preview data missing client_id");
-    }
-    
-    if (!previewData.invoice_number) {
-      console.warn("Preview data missing invoice_number");
-    }
-    
-    if (items.length === 0) {
-      console.warn("Preview data has empty items array");
-    }
-    
-    return previewData;
-  };
-
-  // Determinar si hay suficientes datos para mostrar el preview
-  const shouldShowPreview = () => {
-    return isPreviewVisible && formData;
-  };
-
   return (
     <>
-      <Button onClick={openPopup}>
+      <Button onClick={() => openPopup(invoice)}>
         <Plus className="mr-2 h-4 w-4" />
-        {currentInvoice ? "Editar Factura" : "Nueva Factura"}
+        {invoice ? "Editar Factura" : "Nueva Factura"}
       </Button>
 
-      <Overlay isOpen={isOpen} onClick={(e) => e.stopPropagation()} disableClose={true}>
+      <Overlay isOpen={isOpen} onClick={() => {}} disableClose={true}>
         <div className="flex w-full h-full relative z-10">
           {/* Preview */}
           {shouldShowPreview() && (
@@ -312,10 +371,12 @@ export function InvoicePopupManager({ invoice, onSuccess }: InvoicePopupManagerP
                   </div>
                 </div>
                 <div className="flex-grow overflow-auto p-4" ref={previewRef}>
-                  <InvoicePreviewWrapper 
-                    invoice={getPreviewData()}
-                    showDownloadButton={false}
-                  />
+                  {getPreviewData() && (
+                    <InvoicePreviewWrapper 
+                      invoice={getPreviewData() as Invoice}
+                      showDownloadButton={false}
+                    />
+                  )}
                 </div>
               </div>
             </div>
@@ -330,7 +391,7 @@ export function InvoicePopupManager({ invoice, onSuccess }: InvoicePopupManagerP
               ? "Modifica los detalles de la factura a continuación."
               : "Ingresa la información para crear una nueva factura."}
             footer={formFooter}
-            className={`${isPreviewVisible ? "border-l" : ""} relative z-30`}
+            className={`${isPreviewVisible ? "border-l" : ""}`}
           >
             <Button 
               variant="outline" 
@@ -341,7 +402,7 @@ export function InvoicePopupManager({ invoice, onSuccess }: InvoicePopupManagerP
               {isPreviewVisible ? "Ocultar Preview" : "Mostrar Preview"}
             </Button>
             
-            <div className="relative z-40">
+            <div style={{ position: 'relative', zIndex: 100 }}>
               <InvoiceForm
                 key={`invoice-form-${isOpen ? 'open' : 'closed'}`}
                 invoice={currentInvoice}
