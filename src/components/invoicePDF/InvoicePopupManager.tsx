@@ -48,7 +48,6 @@ export function InvoicePopupManager({ invoice, onSuccess }: InvoicePopupManagerP
         const initialData = currentInvoice ? {
           ...currentInvoice,
           client_id: currentInvoice.client_id || '',
-          items: currentInvoice.items || []
         } : {
           client_id: '',
           company_id: '',
