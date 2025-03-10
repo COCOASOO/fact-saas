@@ -274,9 +274,9 @@ export function InvoiceForm({
   return (
     <form 
       id="invoice-form"
-      onSubmit={(e) => {
-        e.preventDefault();
-        handleSubmit(onSubmit)(onSubmit);
+      onSubmit={(event) => {
+        event.preventDefault();
+        handleSubmit(onSubmit);
       }}
       className="space-y-4 mt-2"
     >
