@@ -32,11 +32,11 @@ import {
 } from "@/components/ui/select"
 import { getInvoiceSeries } from "@/app/routes/invoice_series/route"
 import type { InvoiceSeries } from "@/app/types/invoice-series"
-import { pdf } from "@react-pdf/renderer"
 import { saveAs } from "file-saver"
 import html2pdf from "html2pdf.js"
 import { InvoicePreview } from "@/components/invoicePDF/InvoicePreview"
 import { createRoot } from "react-dom/client"
+import { InvoicePopupManager } from "@/components/invoicePDF/InvoicePopupManager"
 
 const getStatusColor = (status: Invoice["status"]) => {
   switch (status) {
@@ -102,6 +102,9 @@ export default function InvoicesPage() {
   const [invoiceSeries, setInvoiceSeries] = useState<InvoiceSeries[]>([])
   const [isFinalizarDialogOpen, setIsFinalizarDialogOpen] = useState(false)
   const [invoiceToFinalize, setInvoiceToFinalize] = useState<Invoice | null>(null)
+  const [isEditSheetOpen, setIsEditSheetOpen] = useState(false)
+  const [isPreviewDialogOpen, setIsPreviewDialogOpen] = useState(false)
+  const [invoiceFormData, setInvoiceFormData] = useState<Omit<Invoice, 'id' | 'user_id'>>()
 
   // Load invoices and clients on component mount
   useEffect(() => {
@@ -151,13 +154,9 @@ export default function InvoicesPage() {
   }
 
   // Handle invoice edit
-  const handleEditInvoice = async (invoice: Invoice) => {
-    if (invoice.status !== "draft") {
-      toast.error("Solo se pueden editar facturas en estado borrador")
-      return
-    }
+  const handleEditInvoice = (invoice: Invoice) => {
     setCurrentInvoice(invoice)
-    setIsEditDialogOpen(true)
+    setIsEditSheetOpen(true)
   }
 
   // Handle invoice deletion confirmation
@@ -269,6 +268,26 @@ export default function InvoicesPage() {
     }
   };
 
+  // Función para abrir el preview
+  const openPreview = () => {
+    setIsPreviewDialogOpen(true);
+  };
+
+  // Función para manejar cambios en el formulario y actualizar el preview
+  const handleFormDataChange = (data: Omit<Invoice, 'id' | 'user_id'>) => {
+    setInvoiceFormData(data);
+  };
+
+  // Reemplazar función handleNewInvoice y isCreateDialogOpen
+  const refreshInvoices = async () => {
+    try {
+      const invoicesData = await getInvoices();
+      setInvoices(invoicesData);
+    } catch (error) {
+      console.error("Error loading invoices:", error);
+    }
+  };
+
   return (
     <div className="h-full flex-1 flex-col space-y-8 p-8 md:flex">
       <div className="flex items-center justify-between space-y-2">
@@ -277,20 +296,7 @@ export default function InvoicesPage() {
           <p className="text-muted-foreground">Gestiona tus facturas y su información</p>
         </div>
         <div className="flex items-center space-x-2">
-          <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
-            <DialogTrigger asChild>
-              <Button>
-                <Plus className="mr-2 h-4 w-4" /> Nueva Factura
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="sm:max-w-[800px] max-h-[90vh] overflow-y-auto">
-              <DialogHeader>
-                <DialogTitle>Crear Nueva Factura</DialogTitle>
-                <DialogDescription>Crea una nueva factura. Rellena los detalles a continuación.</DialogDescription>
-              </DialogHeader>
-              <InvoiceForm onSubmit={handleCreateInvoice} onCancel={() => setIsCreateDialogOpen(false)} />
-            </DialogContent>
-          </Dialog>
+          <InvoicePopupManager onSuccess={refreshInvoices} />
         </div>
       </div>
       <div className="space-y-4">
@@ -434,67 +440,13 @@ export default function InvoicesPage() {
         </div>
       </div>
 
-      {/* Edit Invoice Dialog */}
-      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-        <DialogContent className="sm:max-w-[800px] max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Editar Factura</DialogTitle>
-            <DialogDescription>Modifica los detalles de la factura a continuación.</DialogDescription>
-          </DialogHeader>
-          {currentInvoice && (
-            <InvoiceForm
-              invoice={currentInvoice}
-              onSubmit={(updatedInvoice) => handleEditInvoice({ ...updatedInvoice, id: currentInvoice.id, user_id: currentInvoice.user_id })}
-              onCancel={() => setIsEditDialogOpen(false)}
-            />
-          )}
-        </DialogContent>
-      </Dialog>
-
-      {/* Delete Confirmation Dialog */}
-      <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Eliminar Factura</DialogTitle>
-            <DialogDescription>
-              ¿Estás seguro de que quieres eliminar la factura {currentInvoice?.invoice_number}? Esta acción no se puede
-              deshacer.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsDeleteDialogOpen(false)}>
-              Cancelar
-            </Button>
-            <Button variant="destructive" onClick={() => currentInvoice && handleDeleteConfirmation(currentInvoice)}>
-              Eliminar Factura
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Finalizar Factura Dialog */}
-      <Dialog open={isFinalizarDialogOpen} onOpenChange={setIsFinalizarDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Finalizar Factura</DialogTitle>
-            <DialogDescription>
-              ¿Estás seguro de que quieres finalizar la factura {invoiceToFinalize?.invoice_number}? 
-              Una vez finalizada, esta factura no podrá ser editada ni eliminada.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsFinalizarDialogOpen(false)}>
-              Cancelar
-            </Button>
-            <Button 
-              className="bg-green-600 hover:bg-green-700" 
-              onClick={() => invoiceToFinalize && handleFinalizarConfirmation(invoiceToFinalize)}
-            >
-              Finalizar Factura
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      {/* Para editar una factura existente */}
+      {currentInvoice && (
+        <InvoicePopupManager 
+          invoice={currentInvoice} 
+          onSuccess={refreshInvoices} 
+        />
+      )}
     </div>
   )
 }

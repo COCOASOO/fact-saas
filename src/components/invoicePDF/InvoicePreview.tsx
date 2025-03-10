@@ -1,22 +1,33 @@
 import React, { forwardRef } from "react";
 import { Invoice } from "@/app/types/invoice";
 import { formatCurrency, formatDate } from "@/lib/utils/invoice-calculations";
+
 interface InvoicePreviewProps {
   invoice: Invoice;
 }
 
 export const InvoicePreview = forwardRef<HTMLDivElement, InvoicePreviewProps>(
   ({ invoice }, ref) => {
+    // Procesar el número de factura para mostrar el valor correcto
+    const invoiceNumber = invoice.invoice_number || "";
+    
     return (
       <div 
         ref={ref} 
-        className="bg-white p-6 sm:p-10 max-w-4xl mx-auto text-sm"
+        data-invoice-preview
+        className="bg-white p-6 mx-auto text-sm relative"
+        style={{
+          width: "210mm",
+          height: "297mm",
+          maxWidth: "100%",
+          margin: "0 auto"
+        }}
       >
         {/* Cabecera */}
         <div className="flex justify-between mb-8">
           <div>
             <h1 className="text-2xl font-bold">FACTURA</h1>
-            <p className="mt-1">Nº: {invoice.invoice_number}</p>
+            <p className="mt-1">Nº: {invoiceNumber}</p>
             <p>Fecha: {formatDate(invoice.invoice_date)}</p>
           </div>
           {/* Logo temporarily disabled until implemented in database
@@ -51,10 +62,10 @@ export const InvoicePreview = forwardRef<HTMLDivElement, InvoicePreviewProps>(
           </div>
         </div>
 
-        {/* Detalles Económicos */}
-        <div className="mt-8">
+        {/* Detalles Económicos - posicionados en la esquina inferior derecha */}
+        <div className="absolute bottom-10 right-6 w-full max-w-xs">
           <div className="flex flex-col items-end">
-            <div className="w-full max-w-xs">
+            <div className="w-full">
               <div className="flex justify-between py-2">
                 <span className="font-semibold">Base Imponible:</span>
                 <span>{formatCurrency(invoice.subtotal || 0)} {invoice.currency}</span>
