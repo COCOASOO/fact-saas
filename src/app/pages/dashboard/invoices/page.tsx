@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { Plus, Pencil, Trash2, Search, Download, Building2, Check, CheckCircle, FileCheck, FileEdit } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -19,7 +19,7 @@ import Link from "next/link"
 import { InvoiceForm } from "@/components/forms/InvoiceForm"
 import type { Invoice } from "@/app/types/invoice"
 import { formatCurrency, formatDate } from "@/lib/utils/invoice-calculations"
-import { getInvoices, updateInvoice, deleteInvoice, addInvoice } from "@/app/routes/invoices/route"
+import { getInvoices, updateInvoice, deleteInvoice, addInvoice, updateInvoiceStatus, getInvoiceById } from "@/app/routes/invoices/route"
 import { getClients } from "@/app/routes/clients/route"
 import { Client } from "@/app/types/client"
 import { toast } from "sonner"
@@ -33,6 +33,10 @@ import {
 import { getInvoiceSeries } from "@/app/routes/invoice_series/route"
 import type { InvoiceSeries } from "@/app/types/invoice-series"
 import { InvoicePopupManager } from "@/components/invoicePDF/InvoicePopupManager"
+import ReactDOM from 'react-dom/client';
+import { InvoicePreview } from "@/components/invoicePDF/InvoicePreview";
+import html2pdf from "html2pdf.js";
+import React from "react"
 
 const getStatusColor = (status: Invoice["status"]) => {
   switch (status) {
@@ -101,6 +105,8 @@ export default function InvoicesPage() {
   const [isEditSheetOpen, setIsEditSheetOpen] = useState(false)
   const [isPreviewDialogOpen, setIsPreviewDialogOpen] = useState(false)
   const [invoiceFormData, setInvoiceFormData] = useState<Omit<Invoice, 'id' | 'user_id'>>()
+  const [selectedInvoiceForEdit, setSelectedInvoiceForEdit] = useState<Invoice | null>(null)
+  const invoicePopupManagerRef = useRef<any>(null)
 
   // Load invoices and clients on component mount
   useEffect(() => {
@@ -149,10 +155,16 @@ export default function InvoicesPage() {
     }
   }
 
-  // Handle invoice edit
-  const handleEditInvoice = (invoice: Invoice) => {
-    setCurrentInvoice(invoice)
-    setIsEditSheetOpen(true)
+  // Handle edit button click - now directly opens the popup
+  const handleEditClick = (invoice: Invoice) => {
+    // Set the invoice to edit and then open the popup directly
+    setSelectedInvoiceForEdit(invoice)
+    // Use a small timeout to ensure the state is updated before we try to open the popup
+    setTimeout(() => {
+      if (invoicePopupManagerRef.current) {
+        invoicePopupManagerRef.current.openPopup(invoice)
+      }
+    }, 0)
   }
 
   // Handle invoice deletion confirmation
@@ -184,10 +196,32 @@ export default function InvoicesPage() {
     return client?.name || 'Cliente no disponible'
   }
 
-  // Handle finalizar invoice
+  // Handle finalizar invoice (this opens the dialog)
   const handleFinalizarInvoice = (invoice: Invoice) => {
+    if (invoice.status !== "draft") {
+      toast.error("Solo facturas en borrador pueden ser finalizadas")
+      return
+    }
     setInvoiceToFinalize(invoice)
     setIsFinalizarDialogOpen(true)
+  }
+
+  // Add this new function to handle the actual finalization
+  const handleFinalizarConfirmation = async () => {
+    if (!invoiceToFinalize) return
+    
+    try {
+      const updatedInvoice = await updateInvoiceStatus(invoiceToFinalize.id, "final")
+      // Update the invoice in the list
+      setInvoices(invoices.map(inv => 
+        inv.id === updatedInvoice.id ? updatedInvoice : inv
+      ))
+      toast.success("Factura finalizada correctamente")
+      setIsFinalizarDialogOpen(false)
+    } catch (error) {
+      console.error("Error al finalizar la factura:", error)
+      toast.error("Error al finalizar la factura")
+    }
   }
 
   // Reemplazar función handleNewInvoice y isCreateDialogOpen
@@ -200,6 +234,151 @@ export default function InvoicesPage() {
     }
   };
 
+  // Add this function to handle PDF download
+  const handleDownloadPDF = async (invoice: Invoice) => {
+    try {
+      toast.loading('Generando PDF...');
+      const completeInvoice = await getInvoiceById(invoice.id);
+
+      if (!completeInvoice || !completeInvoice.client || !completeInvoice.company) {
+        toast.dismiss();
+        toast.error('No se pudieron cargar los datos de la factura');
+        return;
+      }
+
+      console.log('Factura completa cargada:', completeInvoice);
+
+      // Crear un div temporal con dimensiones EXPLÍCITAS y FIJAS
+      const tempDiv = document.createElement('div');
+      tempDiv.style.position = 'absolute';
+      tempDiv.style.left = '-9999px';
+      tempDiv.style.width = '210mm'; // Tamaño A4
+      tempDiv.style.height = '297mm'; // Tamaño A4
+      tempDiv.style.backgroundColor = 'white';
+      tempDiv.style.padding = '0';
+      tempDiv.style.margin = '0';
+      // Asegurar que el div tenga contenido
+      tempDiv.style.border = '1px solid transparent';
+      document.body.appendChild(tempDiv);
+
+      let isLoaded = false;
+
+      const handleLoad = () => {
+        console.log("InvoicePreview cargado completamente");
+        isLoaded = true;
+      };
+
+      // Renderizar el componente InvoicePreview con estilos explícitos
+      const root = ReactDOM.createRoot(tempDiv);
+      root.render(
+        <div style={{ 
+          width: '210mm', 
+          height: '297mm',
+          overflow: 'hidden',
+          backgroundColor: 'white',
+          position: 'relative'
+        }}>
+          <InvoicePreview 
+            ref={(el) => {
+              // Aplicar estilos explícitos al elemento renderizado
+              if (el) {
+                el.style.width = '210mm';
+                el.style.height = '297mm';
+                el.style.margin = '0';
+                el.style.padding = '0';
+                el.style.overflow = 'hidden';
+                el.style.display = 'block';
+                console.log("Dimensiones del elemento:", el.offsetWidth, "x", el.offsetHeight);
+              }
+            }}
+            invoice={completeInvoice} 
+            onLoad={handleLoad} 
+          />
+        </div>
+      );
+
+      // Esperar a que el componente termine de renderizar
+      await new Promise((resolve) => {
+        const interval = setInterval(() => {
+          if (isLoaded) {
+            clearInterval(interval);
+            // Verificar dimensiones del contenido antes de continuar
+            const previewElement = tempDiv.querySelector('[data-invoice-preview]');
+            if (previewElement) {
+              console.log("Dimensiones del preview:", 
+                previewElement.clientWidth, "x", previewElement.clientHeight);
+            }
+            setTimeout(resolve, 500); // Dar más tiempo para que los estilos se apliquen
+          }
+        }, 200);
+        
+        // Timeout de seguridad
+        setTimeout(() => {
+          clearInterval(interval);
+          console.log("Forzando continuación después de timeout");
+          resolve(true);
+        }, 5000);
+      });
+
+      // Forzar un reflow para asegurar que los estilos se apliquen
+      tempDiv.getBoundingClientRect();
+
+      const options = {
+        margin: 0, // Sin márgenes
+        filename: `factura-${completeInvoice.invoice_number}.pdf`,
+        image: { type: 'jpeg', quality: 0.98 },
+        html2canvas: { 
+          scale: 2, 
+          useCORS: true,
+          backgroundColor: 'white',
+          logging: true,
+          // Forzar dimensiones explícitas
+          width: 793, // 210mm en pixeles (aproximado)
+          height: 1122, // 297mm en pixeles (aproximado)
+          windowWidth: 793,
+          windowHeight: 1122
+        },
+        jsPDF: { 
+          unit: 'mm', 
+          format: 'a4', 
+          orientation: 'portrait'
+        }
+      };
+
+      // Esperar un poco más
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      // Intentar capturar el elemento específico con data-invoice-preview
+      const previewElement = tempDiv.querySelector('[data-invoice-preview]');
+      if (previewElement) {
+        await html2pdf()
+          .from(previewElement)
+          .set(options)
+          .save();
+      } else {
+        // Si no encuentra el elemento específico, usar todo el div
+        await html2pdf()
+          .from(tempDiv)
+          .set(options)
+          .save();
+      }
+
+      toast.dismiss();
+      toast.success('PDF descargado correctamente');
+
+      // Limpiar después
+      setTimeout(() => {
+        root.unmount();
+        document.body.removeChild(tempDiv);
+      }, 1000);
+      
+    } catch (error) {
+      console.error('Error al generar el PDF:', error);
+      toast.dismiss();
+      toast.error('Error al generar el PDF');
+    }
+  };
+
   return (
     <div className="h-full flex-1 flex-col space-y-8 p-8 md:flex">
       <div className="flex items-center justify-between space-y-2">
@@ -208,7 +387,10 @@ export default function InvoicesPage() {
           <p className="text-muted-foreground">Gestiona tus facturas y su información</p>
         </div>
         <div className="flex items-center space-x-2">
-          <InvoicePopupManager onSuccess={refreshInvoices} />
+          <InvoicePopupManager 
+            ref={invoicePopupManagerRef}
+            onSuccess={refreshInvoices} 
+          />
         </div>
       </div>
       <div className="space-y-4">
@@ -304,20 +486,25 @@ export default function InvoicesPage() {
                     </TableCell>
                     <TableCell>
                       <div className="flex justify-end gap-2">
-                        {invoice.pdf_url && (
-                          <Button variant="ghost" size="icon" asChild>
-                            <a href={invoice.pdf_url} target="_blank" rel="noopener noreferrer">
-                              <Download className="h-4 w-4" />
-                              <span className="sr-only">Descargar PDF</span>
-                            </a>
+                        {/* Show download button for final invoices */}
+                        {invoice.status === "final" && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleDownloadPDF(invoice)}
+                          >
+                            <Download className="h-4 w-4" />
+                            <span className="sr-only">Descargar PDF</span>
                           </Button>
                         )}
+                        
+                        {/* Show edit/delete/finalize buttons only for drafts */}
                         {invoice.status === "draft" && (
                           <>
                             <Button
                               variant="ghost"
                               size="icon"
-                              onClick={() => handleEditInvoice(invoice)}
+                              onClick={() => handleEditClick(invoice)}
                             >
                               <Pencil className="h-4 w-4" />
                               <span className="sr-only">Editar</span>
@@ -352,13 +539,54 @@ export default function InvoicesPage() {
         </div>
       </div>
 
-      {/* Para editar una factura existente */}
-      {currentInvoice && (
-        <InvoicePopupManager 
-          invoice={currentInvoice} 
-          onSuccess={refreshInvoices} 
-        />
-      )}
+      {/* Delete confirmation dialog */}
+      <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Confirmar eliminación</DialogTitle>
+            <DialogDescription>
+              ¿Estás seguro de que deseas eliminar la factura {currentInvoice?.invoice_number}?
+              Esta acción no se puede deshacer.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsDeleteDialogOpen(false)}>
+              Cancelar
+            </Button>
+            <Button 
+              variant="destructive" 
+              onClick={() => currentInvoice && handleDeleteConfirmation(currentInvoice)}
+            >
+              Eliminar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Add Finalizar confirmation dialog */}
+      <Dialog open={isFinalizarDialogOpen} onOpenChange={setIsFinalizarDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Confirmar finalización</DialogTitle>
+            <DialogDescription>
+              ¿Estás seguro de que deseas finalizar la factura {invoiceToFinalize?.invoice_number}?
+              Esta acción no se puede deshacer y la factura no podrá ser modificada después.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsFinalizarDialogOpen(false)}>
+              Cancelar
+            </Button>
+            <Button 
+              variant="default" 
+              className="bg-green-600 hover:bg-green-700"
+              onClick={handleFinalizarConfirmation}
+            >
+              Finalizar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

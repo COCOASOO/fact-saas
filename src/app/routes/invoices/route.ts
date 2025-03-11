@@ -46,33 +46,28 @@ export async function getInvoices() {
     }
 }
 
-export async function getInvoiceById(id: string) {
-    console.group(`🔍 getInvoiceById(${id})`);
+export async function getInvoiceById(id: string): Promise<Invoice> {
     try {
-        const userId = await getCurrentUserId()
-        console.log('Buscando factura con ID:', id, 'para user_id:', userId);
+        const userId = await getCurrentUserId();
         
-        const { data: invoice, error } = await supabase
+        const { data, error } = await supabase
             .from('invoices')
             .select(`
                 *,
-                clients!inner(*)
+                client:client_id(*),
+                company:company_id(*)
             `)
             .eq('id', id)
             .eq('user_id', userId)
-            .single()
-
+            .single();
+        
         if (error) {
-            console.error('❌ Error al obtener factura:', error);
-            throw error
+            throw error;
         }
-
-        console.log('✅ Factura encontrada:', invoice);
-        console.groupEnd();
-        return invoice as Invoice
+        
+        return data as Invoice;
     } catch (error) {
-        console.error('❌ Error en getInvoiceById:', error);
-        console.groupEnd();
+        console.error('Error al obtener factura por ID:', error);
         throw error;
     }
 }
@@ -239,9 +234,7 @@ export async function updateInvoiceStatus(id: string, status: Invoice["status"])
             .from('invoices')
             .update({ 
                 status, 
-                updated_at: new Date().toISOString(),
-                // Si el estado es "final", guardar la fecha de finalización
-                ...(status === 'final' ? { finalized_at: new Date().toISOString() } : {})
+                updated_at: new Date().toISOString()
             })
             .eq('id', id)
             .eq('user_id', userId);

@@ -1,4 +1,4 @@
-import React, { forwardRef } from "react";
+import React, { forwardRef, useEffect } from "react";
 import { Invoice } from "@/app/types/invoice";
 import { formatCurrency, formatDate } from "@/lib/utils/invoice-calculations";
 import { Client } from "@/app/types/client";
@@ -6,10 +6,18 @@ import { Company } from "@/app/types/company";
 
 interface InvoicePreviewProps {
   invoice: Invoice;
+  onLoad?: () => void;
 }
 
 export const InvoicePreview = forwardRef<HTMLDivElement, InvoicePreviewProps>(
-  ({ invoice }, ref) => {
+  ({ invoice, onLoad }, ref) => {
+    // Add useEffect to call onLoad when component mounts
+    useEffect(() => {
+      if (onLoad) {
+        onLoad();
+      }
+    }, [onLoad]);
+
     // Procesamiento seguro para evitar errores con datos incompletos
     const invoiceNumber = invoice?.invoice_number || "BORRADOR";
     const invoiceDate = invoice?.invoice_date || new Date().toISOString().split('T')[0];
@@ -77,27 +85,34 @@ export const InvoicePreview = forwardRef<HTMLDivElement, InvoicePreviewProps>(
           </div>
         </div>
 
-        {/* Detalles Económicos - posicionados en la esquina inferior derecha */}
-        <div className="absolute bottom-10 right-6 w-full max-w-xs">
-          <div className="flex flex-col items-end">
-            <div className="w-full">
-              <div className="flex justify-between py-2">
-                <span className="font-semibold">Base Imponible:</span>
-                <span>{formatCurrency(subtotal)} {currency}</span>
-              </div>
-              <div className="flex justify-between py-2">
-                <span className="font-semibold">IVA ({taxRate}%):</span>
-                <span>{formatCurrency(taxAmount)} {currency}</span>
-              </div>
-              {irpfRate > 0 && (
-                <div className="flex justify-between py-2">
-                  <span className="font-semibold">IRPF ({irpfRate}%):</span>
-                  <span>-{formatCurrency(irpfAmount)} {currency}</span>
+        {/* Cambio aquí: en lugar de posicionar absolutamente, usamos flex */}
+        <div className="flex flex-col h-full">
+          <div className="flex-grow"></div> {/* Espaciador que empuja el contenido hacia abajo */}
+          
+          {/* Detalles Económicos */}
+          <div className="w-full flex justify-end mt-12 mb-4">
+            <div className="w-full max-w-xs">
+              <div className="flex flex-col items-end">
+                <div className="w-full">
+                  <div className="flex justify-between py-2">
+                    <span className="font-semibold">Base Imponible:</span>
+                    <span>{formatCurrency(subtotal)} {currency}</span>
+                  </div>
+                  <div className="flex justify-between py-2">
+                    <span className="font-semibold">IVA ({taxRate}%):</span>
+                    <span>{formatCurrency(taxAmount)} {currency}</span>
+                  </div>
+                  {irpfRate > 0 && (
+                    <div className="flex justify-between py-2">
+                      <span className="font-semibold">IRPF ({irpfRate}%):</span>
+                      <span>-{formatCurrency(irpfAmount)} {currency}</span>
+                    </div>
+                  )}
+                  <div className="flex justify-between py-2 mt-2 font-bold border-t border-gray-300">
+                    <span>TOTAL:</span>
+                    <span>{formatCurrency(totalAmount)} {currency}</span>
+                  </div>
                 </div>
-              )}
-              <div className="flex justify-between py-2 mt-2 font-bold border-t border-gray-300">
-                <span>TOTAL:</span>
-                <span>{formatCurrency(totalAmount)} {currency}</span>
               </div>
             </div>
           </div>

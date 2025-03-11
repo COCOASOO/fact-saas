@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, forwardRef, useImperativeHandle } from "react";
 import { Button } from "@/components/ui/button";
 import { Overlay } from "@/components/invoicePDF/Overlay";
 import { SidePanel } from "@/components/invoicePDF/SidePanel";
@@ -21,10 +21,10 @@ interface InvoicePopupManagerProps {
   onSuccess?: (invoice: Invoice) => void;
 }
 
-export function InvoicePopupManager({
-  invoice,
-  onSuccess,
-}: InvoicePopupManagerProps) {
+export const InvoicePopupManager = forwardRef<
+  { openPopup: (invoice?: Invoice) => void },
+  InvoicePopupManagerProps
+>(({ invoice, onSuccess }, ref) => {
   const [isOpen, setIsOpen] = useState(false);
   const [isPreviewVisible, setIsPreviewVisible] = useState(true);
   const [currentInvoice, setCurrentInvoice] = useState<Invoice | undefined>(
@@ -141,12 +141,19 @@ export function InvoicePopupManager({
     setFormData(data);
   };
 
-  // Función para abrir el popup con un invoice existente o crear uno nuevo
-  const openPopup = (existingInvoice?: Invoice) => {
+  // Expose the openPopup method via ref
+  useImperativeHandle(ref, () => ({
+    openPopup: (existingInvoice?: Invoice) => {
+      setCurrentInvoice(existingInvoice);
+      formInitialized.current = false;
+      setIsOpen(true);
+    }
+  }));
 
-    // Simplemente pasamos el valor tal cual, que ya es del tipo correcto (Invoice | undefined)
+  // Original openPopup function can remain for the button click
+  const openPopup = (existingInvoice?: Invoice) => {
     setCurrentInvoice(existingInvoice);
-    formInitialized.current = false; // Cambiado de setFormInitialized({ current: false })
+    formInitialized.current = false;
     setIsOpen(true);
   };
 
@@ -396,4 +403,6 @@ export function InvoicePopupManager({
       </Overlay>
     </>
   );
-}
+});
+
+InvoicePopupManager.displayName = "InvoicePopupManager";
