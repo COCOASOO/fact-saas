@@ -11,10 +11,13 @@ interface InvoicePreviewProps {
 
 export const InvoicePreview = forwardRef<HTMLDivElement, InvoicePreviewProps>(
   ({ invoice, onLoad }, ref) => {
-    // Add useEffect to call onLoad when component mounts
+    // Asegurarse de que los estilos se apliquen correctamente
     useEffect(() => {
       if (onLoad) {
-        onLoad();
+        const timer = setTimeout(() => {
+          onLoad();
+        }, 300);
+        return () => clearTimeout(timer);
       }
     }, [onLoad]);
 
@@ -37,12 +40,13 @@ export const InvoicePreview = forwardRef<HTMLDivElement, InvoicePreviewProps>(
       <div 
         ref={ref} 
         data-invoice-preview
-        className="bg-white p-6 mx-auto text-sm relative"
+        className="bg-white mx-auto text-sm relative"
         style={{
           width: "210mm",
-          height: "297mm",
-          maxWidth: "100%",
-          margin: "0 auto"
+          minHeight: "297mm",
+          padding: "15mm",
+          boxSizing: "border-box",
+          backgroundColor: "white"
         }}
       >
         {/* Cabecera */}

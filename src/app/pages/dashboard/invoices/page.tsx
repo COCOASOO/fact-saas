@@ -33,10 +33,10 @@ import {
 import { getInvoiceSeries } from "@/app/routes/invoice_series/route"
 import type { InvoiceSeries } from "@/app/types/invoice-series"
 import { InvoicePopupManager } from "@/components/invoicePDF/InvoicePopupManager"
-import ReactDOM from 'react-dom/client';
-import { InvoicePreview } from "@/components/invoicePDF/InvoicePreview";
-import html2pdf from "html2pdf.js";
+
 import React from "react"
+import { generatePDF } from '@/components/invoicePDF/InvoicePreviewWrapper'
+import { PDFGenerator } from '@/components/invoicePDF/pdfService'
 
 const getStatusColor = (status: Invoice["status"]) => {
   switch (status) {
@@ -237,145 +237,23 @@ export default function InvoicesPage() {
   // Add this function to handle PDF download
   const handleDownloadPDF = async (invoice: Invoice) => {
     try {
-      toast.loading('Generando PDF...');
-      const completeInvoice = await getInvoiceById(invoice.id);
-
-      if (!completeInvoice || !completeInvoice.client || !completeInvoice.company) {
+      toast.loading('Descargando PDF...');
+      
+      // Si la factura ya tiene URL de PDF, descargar directamente
+      if (invoice.pdf_url) {
+        await PDFGenerator.downloadFromURL(invoice);
         toast.dismiss();
-        toast.error('No se pudieron cargar los datos de la factura');
+        toast.success('PDF descargado correctamente');
         return;
       }
-
-      console.log('Factura completa cargada:', completeInvoice);
-
-      // Crear un div temporal con dimensiones EXPLÍCITAS y FIJAS
-      const tempDiv = document.createElement('div');
-      tempDiv.style.position = 'absolute';
-      tempDiv.style.left = '-9999px';
-      tempDiv.style.width = '210mm'; // Tamaño A4
-      tempDiv.style.height = '297mm'; // Tamaño A4
-      tempDiv.style.backgroundColor = 'white';
-      tempDiv.style.padding = '0';
-      tempDiv.style.margin = '0';
-      // Asegurar que el div tenga contenido
-      tempDiv.style.border = '1px solid transparent';
-      document.body.appendChild(tempDiv);
-
-      let isLoaded = false;
-
-      const handleLoad = () => {
-        console.log("InvoicePreview cargado completamente");
-        isLoaded = true;
-      };
-
-      // Renderizar el componente InvoicePreview con estilos explícitos
-      const root = ReactDOM.createRoot(tempDiv);
-      root.render(
-        <div style={{ 
-          width: '210mm', 
-          height: '297mm',
-          overflow: 'hidden',
-          backgroundColor: 'white',
-          position: 'relative'
-        }}>
-          <InvoicePreview 
-            ref={(el) => {
-              // Aplicar estilos explícitos al elemento renderizado
-              if (el) {
-                el.style.width = '210mm';
-                el.style.height = '297mm';
-                el.style.margin = '0';
-                el.style.padding = '0';
-                el.style.overflow = 'hidden';
-                el.style.display = 'block';
-                console.log("Dimensiones del elemento:", el.offsetWidth, "x", el.offsetHeight);
-              }
-            }}
-            invoice={completeInvoice} 
-            onLoad={handleLoad} 
-          />
-        </div>
-      );
-
-      // Esperar a que el componente termine de renderizar
-      await new Promise((resolve) => {
-        const interval = setInterval(() => {
-          if (isLoaded) {
-            clearInterval(interval);
-            // Verificar dimensiones del contenido antes de continuar
-            const previewElement = tempDiv.querySelector('[data-invoice-preview]');
-            if (previewElement) {
-              console.log("Dimensiones del preview:", 
-                previewElement.clientWidth, "x", previewElement.clientHeight);
-            }
-            setTimeout(resolve, 500); // Dar más tiempo para que los estilos se apliquen
-          }
-        }, 200);
-        
-        // Timeout de seguridad
-        setTimeout(() => {
-          clearInterval(interval);
-          console.log("Forzando continuación después de timeout");
-          resolve(true);
-        }, 5000);
-      });
-
-      // Forzar un reflow para asegurar que los estilos se apliquen
-      tempDiv.getBoundingClientRect();
-
-      const options = {
-        margin: 0, // Sin márgenes
-        filename: `factura-${completeInvoice.invoice_number}.pdf`,
-        image: { type: 'jpeg', quality: 0.98 },
-        html2canvas: { 
-          scale: 2, 
-          useCORS: true,
-          backgroundColor: 'white',
-          logging: true,
-          // Forzar dimensiones explícitas
-          width: 793, // 210mm en pixeles (aproximado)
-          height: 1122, // 297mm en pixeles (aproximado)
-          windowWidth: 793,
-          windowHeight: 1122
-        },
-        jsPDF: { 
-          unit: 'mm', 
-          format: 'a4', 
-          orientation: 'portrait'
-        }
-      };
-
-      // Esperar un poco más
-      await new Promise(resolve => setTimeout(resolve, 1000));
       
-      // Intentar capturar el elemento específico con data-invoice-preview
-      const previewElement = tempDiv.querySelector('[data-invoice-preview]');
-      if (previewElement) {
-        await html2pdf()
-          .from(previewElement)
-          .set(options)
-          .save();
-      } else {
-        // Si no encuentra el elemento específico, usar todo el div
-        await html2pdf()
-          .from(tempDiv)
-          .set(options)
-          .save();
-      }
-
+      // Si no tiene PDF, mostrar mensaje al usuario
       toast.dismiss();
-      toast.success('PDF descargado correctamente');
-
-      // Limpiar después
-      setTimeout(() => {
-        root.unmount();
-        document.body.removeChild(tempDiv);
-      }, 1000);
-      
+      toast.error('Esta factura no tiene PDF guardado. Por favor, edite la factura para generarlo.');
     } catch (error) {
-      console.error('Error al generar el PDF:', error);
+      console.error('Error al descargar el PDF:', error);
       toast.dismiss();
-      toast.error('Error al generar el PDF');
+      toast.error('Error al descargar el PDF');
     }
   };
 

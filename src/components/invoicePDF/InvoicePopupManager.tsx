@@ -15,6 +15,7 @@ import { getClientById } from "@/app/routes/clients/route";
 import { getUserCompany } from "@/app/routes/companies/route";
 import { toast } from "sonner";
 import html2pdf from "html2pdf.js";
+import { PDFGenerator } from "@/components/invoicePDF/pdfService";
 
 interface InvoicePopupManagerProps {
   invoice?: Invoice;
@@ -210,43 +211,51 @@ export const InvoicePopupManager = forwardRef<
   };
 
   // Función para descargar el PDF
-  const handleDownloadPDF = () => {
+  const handleDownloadPDF = async () => {
+    try {
+      if (!previewRef.current) {
+        toast.error("No se pudo generar el PDF");
+        return;
+      }
 
-    if (!previewRef.current) {
-      toast.error("No se pudo generar el PDF");
-      return;
-    }
+      const invoiceElement = previewRef.current.querySelector(
+        "[data-invoice-preview]"
+      );
 
-    const invoiceElement = previewRef.current.querySelector(
-      "[data-invoice-preview]"
-    );
+      if (!invoiceElement) {
+        toast.error("No se pudo generar el PDF");
+        return;
+      }
 
-    if (!invoiceElement) {
-      toast.error("No se pudo generar el PDF");
-      return;
-    }
+      toast.loading("Generando PDF...");
 
-    const options = {
-      margin: 0,
-      filename: `${formData?.invoice_number || "factura"}.pdf`,
-      image: { type: "jpeg", quality: 0.98 },
-      html2canvas: { scale: 2, useCORS: true },
-      jsPDF: { unit: "mm", format: "a4", orientation: "portrait" },
-    };
-
-    toast.info("Generando PDF...");
-
-    html2pdf()
-      .from(invoiceElement)
-      .set(options)
-      .save()
-      .then(() => {
+      // Si ya hay un PDF guardado, descárgalo directamente
+      if (currentInvoice?.pdf_url) {
+        await PDFGenerator.downloadFromURL(currentInvoice);
+        toast.dismiss();
         toast.success("PDF descargado correctamente");
-      })
-      .catch((err: any) => {
-        console.error("Error al generar PDF:", err);
-        toast.error("Error al generar el PDF");
-      });
+        return;
+      }
+
+      // Si no, genera y guarda el PDF
+      const previewData = getPreviewData();
+      if (!previewData) {
+        toast.dismiss();
+        toast.error("No hay datos suficientes para generar el PDF");
+        return;
+      }
+
+      // Generar y guardar el PDF
+      await PDFGenerator.generateAndStore(invoiceElement as HTMLElement, previewData);
+      
+      toast.dismiss();
+      toast.success("PDF descargado y guardado correctamente");
+      
+    } catch (err: any) {
+      console.error("Error al generar PDF:", err);
+      toast.dismiss();
+      toast.error("Error al generar el PDF");
+    }
   };
 
   // Crear un objeto completo para el preview
