@@ -171,7 +171,7 @@ export function InvoiceForm({
   }, [formData.subtotal, formData.tax_rate, formData.irpf_rate]);
 
   const handleChange = (field: string, value: any) => {
-    const updatedFormData = { ...formData, [field]: value };
+    const updatedFormData = { ...formData, [field]: value ?? "" };
     
     // Si cambia el subtotal, tax_rate o irpf_rate, recalcular los montos
     if (field === "subtotal" || field === "tax_rate" || field === "irpf_rate") {
@@ -329,7 +329,7 @@ export function InvoiceForm({
                   <Label htmlFor="client_id">Cliente</Label>
                   <Select
                     name="client_id"
-                    value={formData.client_id}
+                    value={formData.client_id ?? ""}
                     onValueChange={handleClientChange}
                   >
                     <SelectTrigger>
@@ -353,7 +353,7 @@ export function InvoiceForm({
                   <Input
                     id="c_nif"
                     name="c_nif"
-                    value={selectedClient?.nif || ""}
+                    value={selectedClient?.nif ?? ""}
                     onChange={(e) =>
                       setSelectedClient((prev) =>
                         prev ? { ...prev, nif: e.target.value } : prev
@@ -366,7 +366,7 @@ export function InvoiceForm({
                   <Input
                     id="c_email"
                     name="c_email"
-                    value={selectedClient?.email || ""}
+                    value={selectedClient?.email ?? ""}
                     onChange={(e) =>
                       setSelectedClient((prev) =>
                         prev ? { ...prev, email: e.target.value } : prev
@@ -379,7 +379,7 @@ export function InvoiceForm({
                   <Input
                     id="c_phone"
                     name="c_phone"
-                    value={selectedClient?.phone || ""}
+                    value={selectedClient?.phone ?? ""}
                     onChange={(e) =>
                       setSelectedClient((prev) =>
                         prev ? { ...prev, phone: e.target.value } : prev
@@ -392,7 +392,7 @@ export function InvoiceForm({
                   <Input
                     id="c_address"
                     name="c_address"
-                    value={selectedClient?.address || ""}
+                    value={selectedClient?.address ?? ""}
                     onChange={(e) =>
                       setSelectedClient((prev) =>
                         prev ? { ...prev, address: e.target.value } : prev
@@ -405,7 +405,7 @@ export function InvoiceForm({
                   <Input
                     id="c_city"
                     name="c_city"
-                    value={selectedClient?.city || ""}
+                    value={selectedClient?.city ?? ""}
                     onChange={(e) =>
                       setSelectedClient((prev) =>
                         prev ? { ...prev, city: e.target.value } : prev
@@ -418,7 +418,7 @@ export function InvoiceForm({
                   <Input
                     id="c_cp"
                     name="c_cp"
-                    value={selectedClient?.postcode || ""}
+                    value={selectedClient?.postcode ?? ""}
                     onChange={(e) =>
                       setSelectedClient((prev) =>
                         prev ? { ...prev, postcode: e.target.value } : prev
@@ -431,7 +431,7 @@ export function InvoiceForm({
                   <Input
                     id="c_country"
                     name="c_country"
-                    value={selectedClient?.country || ""}
+                    value={selectedClient?.country ?? ""}
                     onChange={(e) =>
                       setSelectedClient((prev) =>
                         prev ? { ...prev, country: e.target.value } : prev
@@ -453,7 +453,7 @@ export function InvoiceForm({
                   <Label htmlFor="company_id">Empresa</Label>
                   <input type="hidden" name="company_id" value={company?.id} />
                   <Input
-                    value={company?.name || "Cargando empresa..."}
+                    value={company?.name ?? "Cargando empresa..."}
                     readOnly
                     className="bg-muted"
                   />
@@ -464,7 +464,7 @@ export function InvoiceForm({
                   <Input
                     id="nif"
                     name="nif"
-                    value={company?.nif || ""}
+                    value={company?.nif ?? ""}
                     readOnly
                     className="bg-muted"
                   />
@@ -474,7 +474,7 @@ export function InvoiceForm({
                   <Input
                     id="cp"
                     name="cp"
-                    value={company?.postcode || ""}
+                    value={company?.postcode ?? ""}
                     readOnly
                     className="bg-muted"
                   />
@@ -484,7 +484,7 @@ export function InvoiceForm({
                   <Input
                     id="address"
                     name="address"
-                    value={company?.address || ""}
+                    value={company?.address ?? ""}
                     readOnly
                     className="bg-muted"
                   />
@@ -494,7 +494,7 @@ export function InvoiceForm({
                   <Input
                     id="city"
                     name="city"
-                    value={company?.city || ""}
+                    value={company?.city ?? ""}
                     readOnly
                     className="bg-muted"
                   />
@@ -504,7 +504,7 @@ export function InvoiceForm({
                   <Input
                     id="country"
                     name="country"
-                    value={company?.country || ""}
+                    value={company?.country ?? ""}
                     readOnly
                     className="bg-muted"
                   />
@@ -514,7 +514,7 @@ export function InvoiceForm({
                   <Input
                     id="email"
                     name="email"
-                    value={company?.email || ""}
+                    value={company?.email ?? ""}
                     readOnly
                     className="bg-muted"
                   />
@@ -524,7 +524,7 @@ export function InvoiceForm({
                   <Input
                     id="phone"
                     name="phone"
-                    value={company?.phone || ""}
+                    value={company?.phone ?? ""}
                     readOnly
                     className="bg-muted"
                   />
@@ -546,7 +546,7 @@ export function InvoiceForm({
                       id="subtotal"
                       type="number"
                       step="0.01"
-                      value={formData.subtotal}
+                      value={formData.subtotal ?? 0}
                       onChange={(e) =>
                         handleChange(
                           "subtotal",
@@ -562,7 +562,7 @@ export function InvoiceForm({
                   <div className="grid gap-2">
                     <Label htmlFor="currency">Moneda</Label>
                     <Select
-                      value={formData.currency}
+                      value={formData.currency ?? "EUR"}
                       onValueChange={(value) => handleChange("currency", value)}
                     >
                       <SelectTrigger>
@@ -583,7 +583,7 @@ export function InvoiceForm({
                       id="tax_rate"
                       type="number"
                       step="0.01"
-                      value={formData.tax_rate}
+                      value={formData.tax_rate ?? 0}
                       onChange={(e) =>
                         handleChange(
                           "tax_rate",
@@ -598,7 +598,7 @@ export function InvoiceForm({
                       id="tax_amount"
                       type="number"
                       step="0.01"
-                      value={formData.tax_amount}
+                      value={formData.tax_amount ?? 0}
                       disabled
                     />
                   </div>
@@ -611,7 +611,7 @@ export function InvoiceForm({
                       id="irpf_rate"
                       type="number"
                       step="0.01"
-                      value={formData.irpf_rate}
+                      value={formData.irpf_rate ?? 0}
                       onChange={(e) =>
                         handleChange(
                           "irpf_rate",
@@ -627,7 +627,7 @@ export function InvoiceForm({
                       id="irpf_amount"
                       type="number"
                       step="0.01"
-                      value={formData.irpf_amount}
+                      value={formData.irpf_amount ?? 0}
                       disabled
                     />
                   </div>
@@ -639,7 +639,7 @@ export function InvoiceForm({
                     id="total_amount"
                     type="number"
                     step="0.01"
-                    value={formData.total_amount}
+                    value={formData.total_amount ?? 0}
                     disabled
                   />
                 </div>
