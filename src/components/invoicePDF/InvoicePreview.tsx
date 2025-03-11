@@ -40,13 +40,12 @@ export const InvoicePreview = forwardRef<HTMLDivElement, InvoicePreviewProps>(
       <div 
         ref={ref} 
         data-invoice-preview
-        className="bg-white mx-auto text-sm relative"
+        className="bg-white p-6 text-sm"
         style={{
           width: "210mm",
           minHeight: "297mm",
-          padding: "15mm",
-          boxSizing: "border-box",
-          backgroundColor: "white"
+          maxWidth: "100%",
+          margin: "0 auto",
         }}
       >
         {/* Cabecera */}

@@ -1,7 +1,7 @@
 import html2pdf from 'html2pdf.js';
 import { Invoice } from '@/app/types/invoice';
 import { toast } from 'sonner';
-import { uploadPDF, downloadPDF } from '@/lib/supabase/storageService';
+import { uploadPDF } from '@/lib/supabase/storageService';
 import { updateInvoice } from '@/app/routes/invoices/route';
 import { createClient } from '@/lib/supabase/supabaseClient';
 
@@ -12,82 +12,73 @@ export class PDFGenerator {
     if (!element) {
       throw new Error('No se ha proporcionado un elemento válido');
     }
+    
+    console.log('Iniciando generación de PDF para factura:', invoice.id);
 
     // Obtener el usuario actual
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
     
     if (!user) {
+      console.error('Usuario no autenticado');
       throw new Error('Usuario no autenticado');
     }
-
-    // Eliminar cualquier transformación que pueda afectar al renderizado
-    const elementClone = element.cloneNode(true) as HTMLElement;
-    elementClone.style.transform = 'none';
-    elementClone.style.width = '210mm';
-    elementClone.style.height = '297mm';
-    elementClone.style.padding = '15mm';
-    elementClone.style.boxSizing = 'border-box';
-    elementClone.style.backgroundColor = 'white';
-
-    // Configuración para html2pdf
-    const options = {
-      margin: 0,
-      filename: `factura-${invoice.invoice_number || 'sin-numero'}.pdf`,
-      image: { type: 'jpeg', quality: 0.98 },
-      html2canvas: { 
-        scale: 2,
-        useCORS: true,
-        backgroundColor: 'white',
-        logging: true,
-        windowWidth: 794, // Ancho A4 en px (210mm)
-        windowHeight: 1123 // Alto A4 en px (297mm)
-      },
-      jsPDF: { 
-        unit: 'mm', 
-        format: 'a4', 
-        orientation: 'portrait',
-        compress: true
-      },
-      output: 'blob' // Generar como blob para subir
-    };
-
-    // Crear contenedor temporal
-    const tempContainer = document.createElement('div');
-    tempContainer.style.position = 'absolute';
-    tempContainer.style.left = '-9999px';
-    tempContainer.style.top = '0';
-    tempContainer.appendChild(elementClone);
-    document.body.appendChild(tempContainer);
+    
+    console.log('Usuario autenticado:', user.id);
 
     try {
-      // Esperar a que los estilos se apliquen
-      await new Promise(resolve => setTimeout(resolve, 500));
+      // Configuración para html2pdf
+      const options = {
+        filename: `factura-${invoice.invoice_number || 'sin-numero'}.pdf`,
+        image: { type: 'jpeg', quality: 0.98 },
+        html2canvas: { 
+          scale: 2,
+          useCORS: true,
+          backgroundColor: 'white',
+          logging: true
+        },
+        jsPDF: { 
+          unit: 'mm', 
+          format: 'a4', 
+          orientation: 'portrait'
+        },
+        output: 'blob'
+      };
       
-      // Generar PDF como blob
-      const pdfBlob = await html2pdf()
-        .set(options)
-        .from(elementClone)
-        .outputPdf('blob');
+      console.log('Generando PDF con opciones:', options);
       
-      // Nombre de archivo único con id de la factura
+      // Generar PDF como blob con manejo de errores mejorado
+      let pdfBlob;
+      try {
+        pdfBlob = await html2pdf().from(element).set(options).outputPdf('blob');
+        console.log('PDF generado correctamente, tamaño:', pdfBlob.size);
+      } catch (pdfError) {
+        console.error('Error al generar el PDF:', pdfError);
+        throw new Error(`Error al generar el PDF: ${pdfError}`);
+      }
+      
+      // Nombre de archivo único
       const fileName = `invoice_${invoice.id}_${Date.now()}.pdf`;
       
-      // Subir a Supabase Storage con el userId para cumplir las políticas
+      // Subir a Supabase Storage
+      console.log('Subiendo PDF a Storage...');
       const pdfUrl = await uploadPDF(pdfBlob, fileName, user.id);
+      console.log('PDF subido, URL:', pdfUrl);
       
       // Actualizar la factura con la URL del PDF
+      console.log('Actualizando factura con PDF URL...');
       if (invoice.id) {
-        await updateInvoice({
+        const updatedInvoice = await updateInvoice({
           ...invoice,
           pdf_url: pdfUrl
         });
+        console.log('Factura actualizada con PDF URL:', updatedInvoice);
       }
       
       return pdfUrl;
-    } finally {
-      // Limpiar
-      document.body.removeChild(tempContainer);
+    } catch (error) {
+      console.error('Error en generateAndStore:', error);
+      throw error;
     }
   }
 
@@ -145,7 +136,34 @@ export class PDFGenerator {
       throw new Error('Esta factura no tiene un PDF guardado');
     }
     
-    const filename = `factura-${invoice.invoice_number || 'sin-numero'}.pdf`;
-    await downloadPDF(invoice.pdf_url, filename);
+    try {
+      console.log('Descargando PDF desde URL:', invoice.pdf_url);
+      
+      const response = await fetch(invoice.pdf_url);
+      
+      if (!response.ok) {
+        throw new Error(`Error al descargar: ${response.status} ${response.statusText}`);
+      }
+      
+      const blob = await response.blob();
+      const downloadUrl = URL.createObjectURL(blob);
+      
+      const filename = `factura-${invoice.invoice_number || 'sin-numero'}.pdf`;
+      
+      const link = document.createElement('a');
+      link.href = downloadUrl;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+      // Liberar el objeto URL
+      URL.revokeObjectURL(downloadUrl);
+      
+      console.log('PDF descargado correctamente');
+    } catch (error) {
+      console.error('Error al descargar PDF:', error);
+      throw error;
+    }
   }
 }

@@ -8,11 +8,18 @@ import { createClient } from '@/lib/supabase/supabaseClient';
  */
 export const uploadPDF = async (pdfBlob: Blob, fileName: string, userId: string): Promise<string> => {
   try {
+    console.log('Intentando subir PDF:', {fileName, userId, blobSize: pdfBlob.size});
+    
     const supabase = createClient();
     
-    // Obtener el ID del usuario para estructurar la carpeta según la política
-    // Crear la ruta con formato userId/fileName para cumplir con las políticas de seguridad
+    // Verificar que el blob no esté vacío
+    if (pdfBlob.size === 0) {
+      throw new Error('El blob del PDF está vacío');
+    }
+    
+    // Crear la ruta con formato userId/fileName
     const filePath = `${userId}/${fileName}`;
+    console.log('Ruta del archivo:', filePath);
     
     // Subir el archivo al bucket 'invoices'
     const { data, error } = await supabase
@@ -24,15 +31,19 @@ export const uploadPDF = async (pdfBlob: Blob, fileName: string, userId: string)
       });
 
     if (error) {
-      console.error('Error al subir PDF:', error);
-      throw new Error('No se pudo guardar el PDF');
+      console.error('Error al subir PDF a Supabase:', error);
+      throw new Error(`Error al subir PDF: ${error.message}`);
     }
 
+    console.log('PDF subido correctamente, obteniendo URL pública');
+    
     // Obtener la URL pública del archivo
     const { data: { publicUrl } } = supabase
       .storage
       .from('invoices')
       .getPublicUrl(filePath);
+    
+    console.log('URL pública generada:', publicUrl);
 
     return publicUrl;
   } catch (error) {

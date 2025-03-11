@@ -16,6 +16,7 @@ import { getUserCompany } from "@/app/routes/companies/route";
 import { toast } from "sonner";
 import html2pdf from "html2pdf.js";
 import { PDFGenerator } from "@/components/invoicePDF/pdfService";
+import { createClient } from "@/lib/supabase/supabaseClient";
 
 interface InvoicePopupManagerProps {
   invoice?: Invoice;
@@ -210,6 +211,137 @@ export const InvoicePopupManager = forwardRef<
     }
   };
 
+  // Función para guardar la factura y generar PDF
+  const handleSaveInvoice = async () => {
+    try {
+      // Asegurar que client_id esté definido
+      if (!formData.client_id) {
+        toast.error("Por favor, selecciona un cliente");
+        return;
+      }
+
+      // Asegurar que items sea siempre un array
+      const invoiceData = { 
+        ...formData,
+        items: formData.items || [] 
+      };
+
+      setIsSubmitting(true);
+      console.log("Guardando factura con datos:", invoiceData);
+
+      let savedInvoice;
+
+      try {
+        if (currentInvoice?.id) {
+          console.log("Actualizando factura existente:", currentInvoice.id);
+          savedInvoice = await updateInvoice({
+            ...invoiceData,
+            id: currentInvoice.id,
+          });
+        } else {
+          console.log("Creando nueva factura");
+          savedInvoice = await addInvoice(invoiceData);
+        }
+        
+        console.log("Factura guardada exitosamente:", savedInvoice);
+        
+        // Una vez guardada la factura, generamos el PDF
+        if (savedInvoice && previewRef.current) {
+          console.log("Buscando elemento preview para generar PDF");
+          const invoiceElement = previewRef.current.querySelector(
+            "[data-invoice-preview]"
+          );
+
+          if (invoiceElement) {
+            console.log("Elemento preview encontrado, generando PDF");
+            toast.loading("Generando PDF...");
+            
+            try {
+              // Obtener usuario actual
+              const supabase = createClient();
+              const { data: { user } } = await supabase.auth.getUser();
+              
+              if (!user) {
+                throw new Error("Usuario no autenticado");
+              }
+              
+              console.log("Usuario autenticado:", user.id);
+              
+              // Generar PDF como blob
+              const options = {
+                margin: 10,
+                filename: `factura-${savedInvoice.invoice_number}.pdf`,
+                image: { type: 'jpeg', quality: 0.98 },
+                html2canvas: { 
+                  scale: 2,
+                  useCORS: true,
+                  backgroundColor: 'white',
+                  logging: true
+                },
+                jsPDF: { 
+                  unit: 'mm', 
+                  format: 'a4', 
+                  orientation: 'portrait'
+                }
+              };
+              
+              console.log("Generando PDF con opciones:", options);
+              
+              // Generar PDF directamente
+              const pdfBlob = await html2pdf()
+                .from(invoiceElement)
+                .set(options)
+                .outputPdf('blob');
+              
+              console.log("PDF generado correctamente, tamaño:", pdfBlob.size);
+              
+              // Subir a Storage
+              const fileName = `invoice_${savedInvoice.id}_${Date.now()}.pdf`;
+              console.log("Subiendo PDF a Storage:", fileName);
+              
+              // Importación dinámica para asegurar que uploadPDF está accesible
+              const { uploadPDF } = await import('@/lib/supabase/storageService');
+              const pdfUrl = await uploadPDF(pdfBlob, fileName, user.id);
+              
+              console.log("PDF subido exitosamente, URL:", pdfUrl);
+              
+              // Actualizar factura con la URL del PDF
+              console.log("Actualizando factura con URL del PDF");
+              await updateInvoice({
+                ...savedInvoice,
+                pdf_url: pdfUrl
+              });
+              
+              toast.dismiss();
+              toast.success("Factura y PDF guardados correctamente");
+            } catch (pdfError) {
+              console.error("Error al generar o guardar el PDF:", pdfError);
+              toast.dismiss();
+              toast.error("La factura se guardó pero hubo un error al generar el PDF");
+            }
+          } else {
+            console.warn("No se encontró elemento preview para generar PDF");
+          }
+        }
+
+        if (onSuccess) {
+          onSuccess(savedInvoice);
+        }
+
+        closePopup();
+      } catch (error) {
+        console.error("Error al guardar la factura:", error);
+        toast.error("Error al guardar la factura");
+      } finally {
+        setIsSubmitting(false);
+      }
+    } catch (error) {
+      console.error("Error general en handleSaveInvoice:", error);
+      setIsSubmitting(false);
+      toast.error("Error al procesar la operación");
+    }
+  };
+
   // Función para descargar el PDF
   const handleDownloadPDF = async () => {
     try {
@@ -285,7 +417,7 @@ export const InvoicePopupManager = forwardRef<
 
   // Determinar si hay suficientes datos para mostrar el preview
   const shouldShowPreview = () => {
-    return isPreviewVisible && formData;
+    return isPreviewVisible && isOpen;
   };
 
   // Añadir este useEffect
@@ -317,15 +449,9 @@ export const InvoicePopupManager = forwardRef<
       </Button>
 
       <Button
-        type="button" // Cambiado de "submit" a "button"
+        type="button"
         disabled={isSubmitting}
-        onClick={() => {
-          // Buscar el botón de submit en el formulario y hacer clic en él
-          const submitButton = document.getElementById("invoice-form-submit");
-          if (submitButton) {
-            submitButton.click();
-          }
-        }}
+        onClick={handleSaveInvoice}
       >
         {isSubmitting
           ? "Guardando..."
@@ -335,6 +461,26 @@ export const InvoicePopupManager = forwardRef<
       </Button>
     </div>
   );
+
+  // En un componente que se carga al inicio
+  useEffect(() => {
+    const checkSupabaseConnection = async () => {
+      try {
+        const supabase = createClient();
+        const { data, error } = await supabase.storage.listBuckets();
+        
+        if (error) {
+          console.error('Error al verificar conexión con Supabase Storage:', error);
+        } else {
+          console.log('Conexión a Supabase Storage correcta. Buckets disponibles:', data?.map(b => b.name));
+        }
+      } catch (err) {
+        console.error('Error al verificar Supabase:', err);
+      }
+    };
+    
+    checkSupabaseConnection();
+  }, []);
 
   return (
     <>
@@ -401,7 +547,7 @@ export const InvoicePopupManager = forwardRef<
               <InvoiceForm
                 key={`invoice-form-${isOpen ? "open" : "closed"}`}
                 invoice={currentInvoice}
-                onSubmit={handleSubmit}
+                onSubmit={handleSaveInvoice}
                 onCancel={closePopup}
                 onFormDataChange={handleFormDataChange}
                 initialData={formData}
