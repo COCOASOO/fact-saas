@@ -139,31 +139,79 @@ export class PDFGenerator {
     try {
       console.log('Descargando PDF desde URL:', invoice.pdf_url);
       
-      const response = await fetch(invoice.pdf_url);
+      // Verificar si necesitamos regenerar un token para la URL
+      let downloadUrl = invoice.pdf_url;
+      
+      // Si la URL es de Supabase, intentamos obtener una URL firmada si es necesario
+      if (downloadUrl.includes('supabase.co')) {
+        try {
+          const supabase = createClient();
+          
+          // Extraer la ruta del archivo desde la URL
+          const urlParts = downloadUrl.split('/object/public/');
+          if (urlParts.length > 1) {
+            const [bucket, filePath] = urlParts[1].split('/', 1);
+            const fullPath = urlParts[1].substring(bucket.length + 1);
+            
+            console.log('Obteniendo URL firmada para:', { bucket, fullPath });
+            
+            // Obtener una URL firmada con duración de 60 segundos
+            const { data, error } = await supabase
+              .storage
+              .from(bucket)
+              .createSignedUrl(fullPath, 60);
+              
+            if (data && !error) {
+              console.log('URL firmada generada correctamente:', data.signedUrl);
+              downloadUrl = data.signedUrl;
+            } else {
+              console.warn('No se pudo generar URL firmada:', error);
+            }
+          }
+        } catch (signError) {
+          console.warn('Error al generar URL firmada:', signError);
+          // Continuamos con la URL original
+        }
+      }
+      
+      // Intentar descargar con la URL (original o firmada)
+      const response = await fetch(downloadUrl);
       
       if (!response.ok) {
-        throw new Error(`Error al descargar: ${response.status} ${response.statusText}`);
+        // Si falla, intenta un enfoque alternativo
+        console.warn(`Error al descargar con fetch: ${response.status}. Intentando descargar con nueva pestaña...`);
+        
+        // Abrir en nueva pestaña como alternativa
+        window.open(downloadUrl, '_blank');
+        return;
       }
       
       const blob = await response.blob();
-      const downloadUrl = URL.createObjectURL(blob);
+      const objectUrl = URL.createObjectURL(blob);
       
       const filename = `factura-${invoice.invoice_number || 'sin-numero'}.pdf`;
       
       const link = document.createElement('a');
-      link.href = downloadUrl;
+      link.href = objectUrl;
       link.download = filename;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
       
       // Liberar el objeto URL
-      URL.revokeObjectURL(downloadUrl);
+      URL.revokeObjectURL(objectUrl);
       
       console.log('PDF descargado correctamente');
     } catch (error) {
       console.error('Error al descargar PDF:', error);
-      throw error;
+      
+      // Como última alternativa, abrimos directamente la URL
+      try {
+        window.open(invoice.pdf_url, '_blank');
+      } catch (openError) {
+        console.error('También falló abrir en nueva pestaña:', openError);
+        throw error;
+      }
     }
   }
 }
