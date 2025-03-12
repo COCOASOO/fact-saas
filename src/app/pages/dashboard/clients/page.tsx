@@ -20,6 +20,7 @@ import { getClients, addClient, updateClient, deleteClient } from "@/app/routes/
 import { Client, CreateClientDTO, UpdateClientDTO } from "@/app/routes/clients/route"
 import { getCompanies } from "@/app/routes/companies/route"
 import type { Company } from "@/app/routes/companies/route"
+import { Skeleton } from "@/components/ui/skeleton"
 
 export default function ClientsPage() {
   const [clients, setClients] = useState<Client[]>([])
@@ -138,34 +139,30 @@ export default function ClientsPage() {
         </div>
       )}
       
-      {isLoading ? (
-        <div>Cargando...</div>
-      ) : (
-        <div className="flex items-center justify-between space-y-2">
-          <div>
-            <h2 className="text-2xl font-bold tracking-tight">Clientes</h2>
-            <p className="text-muted-foreground">Gestiona la información y detalles de tus clientes</p>
-          </div>
-          <div className="flex items-center space-x-2">
-            <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
-              <DialogTrigger asChild>
-                <Button>
-                  <Plus className="mr-2 h-4 w-4" /> Añadir Cliente
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
-                <DialogHeader>
-                  <DialogTitle>Crear Nuevo Cliente</DialogTitle>
-                  <DialogDescription>
-                    Añade un nuevo cliente a tu organización. Rellena los detalles a continuación.
-                  </DialogDescription>
-                </DialogHeader>
-                <ClientForm onSubmit={handleCreateClient} onCancel={() => setIsCreateDialogOpen(false)} />
-              </DialogContent>
-            </Dialog>
-          </div>
+      <div className="flex items-center justify-between space-y-2">
+        <div>
+          <h2 className="text-2xl font-bold tracking-tight">Clientes</h2>
+          <p className="text-muted-foreground">Gestiona la información y detalles de tus clientes</p>
         </div>
-      )}
+        <div className="flex items-center space-x-2">
+          <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
+            <DialogTrigger asChild>
+              <Button>
+                <Plus className="mr-2 h-4 w-4" /> Añadir Cliente
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle>Crear Nuevo Cliente</DialogTitle>
+                <DialogDescription>
+                  Añade un nuevo cliente a tu organización. Rellena los detalles a continuación.
+                </DialogDescription>
+              </DialogHeader>
+              <ClientForm onSubmit={handleCreateClient} onCancel={() => setIsCreateDialogOpen(false)} />
+            </DialogContent>
+          </Dialog>
+        </div>
+      </div>
       <div className="space-y-4">
         <div className="flex items-center gap-2">
           <div className="relative flex-1 max-w-sm">
@@ -191,7 +188,47 @@ export default function ClientsPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredClients.length === 0 ? (
+              {isLoading ? (
+                // Skeleton loader para la tabla
+                Array.from({ length: 5 }).map((_, index) => (
+                  <TableRow key={`skeleton-${index}`}>
+                    <TableCell>
+                      <div className="flex flex-col gap-1">
+                        <Skeleton className="h-5 w-[180px]" />
+                        <Skeleton className="h-4 w-[120px]" />
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex flex-col gap-1">
+                        <Skeleton className="h-5 w-[150px]" />
+                        <Skeleton className="h-4 w-[100px]" />
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex flex-col gap-1">
+                        <Skeleton className="h-4 w-[180px]" />
+                        <Skeleton className="h-4 w-[120px]" />
+                      </div>
+                    </TableCell>
+                    <TableCell className="hidden md:table-cell">
+                      <div className="flex flex-col gap-1">
+                        <Skeleton className="h-4 w-[200px]" />
+                        <Skeleton className="h-4 w-[150px]" />
+                        <Skeleton className="h-4 w-[80px]" />
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-center">
+                      <Skeleton className="h-6 w-12 mx-auto" />
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex justify-end gap-2">
+                        <Skeleton className="h-8 w-8 rounded-full" />
+                        <Skeleton className="h-8 w-8 rounded-full" />
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))
+              ) : filteredClients.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={6} className="h-24 text-center">
                     No se encontraron clientes.

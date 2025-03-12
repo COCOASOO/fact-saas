@@ -33,10 +33,10 @@ import {
 import { getInvoiceSeries } from "@/app/routes/invoice_series/route"
 import type { InvoiceSeries } from "@/app/types/invoice-series"
 import { InvoicePopupManager } from "@/components/invoicePDF/InvoicePopupManager"
-
+import { Skeleton } from "@/components/ui/skeleton"
+import { PDFGenerator } from '@/components/invoicePDF/pdfService'
 import React from "react"
 import { generatePDF } from '@/components/invoicePDF/InvoicePreviewWrapper'
-import { PDFGenerator } from '@/components/invoicePDF/pdfService'
 
 const getStatusColor = (status: Invoice["status"]) => {
   switch (status) {
@@ -107,11 +107,13 @@ export default function InvoicesPage() {
   const [invoiceFormData, setInvoiceFormData] = useState<Omit<Invoice, 'id' | 'user_id'>>()
   const [selectedInvoiceForEdit, setSelectedInvoiceForEdit] = useState<Invoice | null>(null)
   const invoicePopupManagerRef = useRef<any>(null)
+  const [isLoading, setIsLoading] = useState(true)
 
   // Load invoices and clients on component mount
   useEffect(() => {
     const loadData = async () => {
       try {
+        setIsLoading(true)
         const [invoicesData, clientsData, seriesData] = await Promise.all([
           getInvoices(),
           getClients(),
@@ -122,6 +124,8 @@ export default function InvoicesPage() {
         setInvoiceSeries(seriesData)
       } catch (error) {
         console.error("Error loading data:", error)
+      } finally {
+        setIsLoading(false)
       }
     }
     loadData()
@@ -340,7 +344,48 @@ export default function InvoicesPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredInvoices.length === 0 ? (
+              {isLoading ? (
+                // Skeleton loader mientras se cargan los datos
+                Array.from({ length: 5 }).map((_, index) => (
+                  <TableRow key={`skeleton-${index}`}>
+                    <TableCell>
+                      <Skeleton className="h-5 w-[80px]" />
+                    </TableCell>
+                    <TableCell>
+                      <Skeleton className="h-5 w-[100px]" />
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex flex-col gap-1">
+                        <Skeleton className="h-5 w-[180px]" />
+                        <Skeleton className="h-4 w-[120px]" />
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <Skeleton className="h-5 w-[80px] ml-auto" />
+                    </TableCell>
+                    <TableCell>
+                      <Skeleton className="h-5 w-[80px] ml-auto" />
+                    </TableCell>
+                    <TableCell>
+                      <Skeleton className="h-5 w-[80px] ml-auto" />
+                    </TableCell>
+                    <TableCell>
+                      <Skeleton className="h-5 w-[80px] ml-auto" />
+                    </TableCell>
+                    <TableCell>
+                      <Skeleton className="h-6 w-[100px]" />
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex justify-end gap-1">
+                        <Skeleton className="h-8 w-8 rounded-full" />
+                        <Skeleton className="h-8 w-8 rounded-full" />
+                        <Skeleton className="h-8 w-8 rounded-full" />
+                        <Skeleton className="h-8 w-8 rounded-full" />
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))
+              ) : filteredInvoices.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={9} className="h-24 text-center">
                     No se encontraron facturas.

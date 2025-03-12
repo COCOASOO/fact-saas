@@ -37,6 +37,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export default function InvoiceSeriesPage() {
   const [series, setSeries] = useState<InvoiceSeries[]>([]);
@@ -51,6 +52,7 @@ export default function InvoiceSeriesPage() {
   const [typeFilter, setTypeFilter] = useState<
     "all" | "standard" | "rectifying"
   >("all");
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     loadSeries();
@@ -58,6 +60,7 @@ export default function InvoiceSeriesPage() {
 
   const loadSeries = async () => {
     try {
+      setIsLoading(true);
       const data = await getInvoiceSeries();
       if (Array.isArray(data)) {
         setSeries(data);
@@ -68,6 +71,8 @@ export default function InvoiceSeriesPage() {
     } catch (error) {
       console.error("Error loading series:", error);
       toast.error("No se pudieron cargar las series");
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -211,7 +216,25 @@ export default function InvoiceSeriesPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredAndSortedSeries.length === 0 ? (
+              {isLoading ? (
+                Array.from({ length: 3 }).map((_, index) => (
+                  <TableRow key={`skeleton-${index}`}>
+                    <TableCell><Skeleton className="h-5 w-[120px]" /></TableCell>
+                    <TableCell><Skeleton className="h-5 w-[80px]" /></TableCell>
+                    <TableCell><Skeleton className="h-5 w-[40px]" /></TableCell>
+                    <TableCell><Skeleton className="h-5 w-[100px]" /></TableCell>
+                    <TableCell>
+                      <Skeleton className="h-6 w-10 rounded-full" />
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex justify-end gap-2">
+                        <Skeleton className="h-8 w-8 rounded-full" />
+                        <Skeleton className="h-8 w-8 rounded-full" />
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))
+              ) : filteredAndSortedSeries.length === 0 ? (
                 <TableRow>
                   <TableCell
                     colSpan={6}
