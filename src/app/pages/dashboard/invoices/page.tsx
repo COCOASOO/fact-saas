@@ -88,6 +88,24 @@ async function uploadPDF(formData: FormData): Promise<string> {
   });
 }
 
+// Función para mostrar el número de factura limpio en la UI
+const getDisplayInvoiceNumber = (invoiceNumber: string) => {
+  if (invoiceNumber?.startsWith('BORRADOR-')) {
+    // Devolver un diseño apilado verticalmente para ahorrar espacio horizontal
+    return (
+      <div className="flex flex-col">
+        <span className="text-amber-600 text-xs font-semibold bg-amber-50 px-1 rounded self-start mb-1">
+          BORRADOR
+        </span>
+        <span className="font-medium">
+          {invoiceNumber.replace('BORRADOR-', '')}
+        </span>
+      </div>
+    );
+  }
+  return <span className="font-medium">{invoiceNumber}</span>;
+};
+
 export default function InvoicesPage() {
   const [invoices, setInvoices] = useState<Invoice[]>([])
   const [clients, setClients] = useState<Client[]>([])
@@ -394,7 +412,9 @@ export default function InvoicesPage() {
               ) : (
                 filteredInvoices.map((invoice) => (
                   <TableRow key={invoice.id}>
-                    <TableCell className="font-medium">{invoice.invoice_number}</TableCell>
+                    <TableCell className="min-w-[140px]">
+                      {getDisplayInvoiceNumber(invoice.invoice_number)}
+                    </TableCell>
                     <TableCell>{formatDate(invoice.invoice_date)}</TableCell>
                     <TableCell>{getClientName(invoice.client_id)}</TableCell>
                     <TableCell className="text-right">{formatCurrency(invoice.subtotal)}</TableCell>

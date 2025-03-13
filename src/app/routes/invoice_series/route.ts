@@ -32,7 +32,6 @@ export async function getInvoiceSeries() {
             last_invoice_number: lastNumber
           };
         } catch (error) {
-          console.error(`Error getting last number for series ${serie.id}:`, error);
           return {
             ...serie,
             last_invoice_number: null
@@ -43,7 +42,6 @@ export async function getInvoiceSeries() {
 
     return seriesWithLastNumber;
   } catch (error) {
-    console.error("Error getting invoice series:", error);
     throw error;
   }
 }
@@ -81,7 +79,6 @@ export async function addInvoiceSeries(series: CreateInvoiceSeriesDTO) {
     if (error) throw error;
     return data as InvoiceSeries;
   } catch (error) {
-    console.error("Error adding invoice series:", error);
     throw error;
   }
 }
@@ -165,14 +162,12 @@ export async function getNextInvoiceNumber(seriesId: string): Promise<string> {
 
     if (existingInvoices && existingInvoices.length > 0) {
       // Si el número ya está en uso, intentar con el siguiente
-      console.warn(`Número ${formattedNumber} ya en uso, intentando con el siguiente...`);
       nextNumber++;
       return getNextInvoiceNumber(seriesId);
     }
 
     return formattedNumber;
   } catch (error) {
-    console.error("Error getting next invoice number:", error);
     throw error;
   }
 }
@@ -205,7 +200,6 @@ export async function updateSeriesInvoiceCount(seriesId: string) {
 
     return count || 0;
   } catch (error) {
-    console.error('Error updating series invoice count:', error);
     throw error;
   }
 }
@@ -246,7 +240,6 @@ export async function deleteInvoiceSeries(id: string) {
 
     if (error) throw error;
   } catch (error) {
-    console.error("Error deleting invoice series:", error);
     throw error;
   }
 }
@@ -289,7 +282,6 @@ export async function updateInvoiceSeries(id: string, series: UpdateInvoiceSerie
     if (error) throw error;
     return data as InvoiceSeries;
   } catch (error) {
-    console.error("Error updating invoice series:", error);
     throw error;
   }
 }
@@ -312,7 +304,6 @@ export async function checkDuplicateFormat(format: string, excludeId?: string) {
     if (error) throw error;
     return data.length > 0;
   } catch (error) {
-    console.error("Error checking duplicate format:", error);
     throw error;
   }
 }
@@ -321,24 +312,21 @@ export async function getLastInvoiceNumber(seriesId: string): Promise<string | n
   try {
     const { data, error } = await supabase
       .from('invoices')
-      .select('invoice_number, created_at')  // Incluimos created_at explícitamente
+      .select('invoice_number, created_at')
       .eq('series_id', seriesId)
       .order('created_at', { ascending: false })
       .limit(1);
 
     if (error) {
-      console.error("Error in getLastInvoiceNumber:", error);
       return null;
     }
 
-    // Verificamos si hay resultados
     if (!data || data.length === 0) {
       return null;
     }
 
     return data[0].invoice_number;
   } catch (error) {
-    console.error("Error getting last invoice number:", error);
     return null;
   }
 }

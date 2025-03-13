@@ -64,7 +64,6 @@ export async function signUp(
         ]);
       
       if (userError) {
-        console.error("Error inserting user data:", userError.message);
         alert("Error al guardar los datos del usuario");
         return;
       }
@@ -73,7 +72,6 @@ export async function signUp(
       router.push("/pages/auth/login");
     }
   } catch (error) {
-    console.error("Error en el registro:", error);
     alert("Ocurrió un error durante el registro");
   }
 }

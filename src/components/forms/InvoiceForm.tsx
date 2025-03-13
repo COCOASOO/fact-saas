@@ -24,6 +24,7 @@ import { Client } from "@/app/types/client";
 import { Company, getUserCompany } from "@/app/routes/companies/route";
 import { getInvoiceSeries } from '@/app/routes/invoice_series/route';
 import { InvoiceSeries } from '@/app/types/invoice-series';
+import { generateInvoiceNumber } from "@/app/routes/invoices/route";
 
 interface InvoiceFormProps {
   invoice?: Invoice;
@@ -124,6 +125,26 @@ export function InvoiceForm({
       loadClientData();
     }
   }, [invoice]);
+
+  // Generar número de factura provisional para previsualización
+useEffect(() => {
+  if (!formData.invoice_number && formData.series_id) {
+    // Si no hay número de factura pero hay serie seleccionada
+    const fetchNextNumber = async () => {
+      try {
+        const nextNumber = await generateInvoiceNumber(formData.series_id);
+        setFormData(prev => ({
+          ...prev,
+          invoice_number: nextNumber // Esto incluirá "BORRADOR-"
+        }));
+      } catch (error) {
+        console.error("Error al generar número de factura:", error);
+      }
+    };
+    
+    fetchNextNumber();
+  }
+}, [formData.series_id]);
 
   useEffect(() => {
     const loadSeries = async () => {

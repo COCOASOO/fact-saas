@@ -80,7 +80,7 @@ export async function addInvoice(invoice: Omit<Invoice, 'id' | 'user_id'>): Prom
         }
 
         // Obtener el siguiente número de factura
-        const nextNumber = await getNextInvoiceNumber(invoice.series_id);
+        const nextNumber = await generateInvoiceNumber(invoice.series_id);
         
         // Extraemos invoice_type e items para que no se incluyan en la inserción
         const { invoice_type, items, ...invoiceData } = invoice;
@@ -204,67 +204,186 @@ export async function deleteInvoice(id: string) {
     }
 }
 
-export async function updateInvoiceStatus(id: string, status: Invoice["status"]) {
-    console.group(`🔄 updateInvoiceStatus(${id}, ${status})`);
+export async function updateInvoiceStatus(id: string, newStatus: string): Promise<Invoice> {
+    console.group(`🔄 updateInvoiceStatus(${id}, ${newStatus})`);
+    
     try {
-        const userId = await getCurrentUserId();
-        console.log('Actualizando estado de factura:', id, 'a', status);
-        
-        // Verificar que la factura esté en estado "draft" si se va a finalizar
-        if (status === 'final') {
-            const { data: invoice, error: getError } = await supabase
-                .from('invoices')
-                .select('status')
-                .eq('id', id)
-                .eq('user_id', userId)
-                .single();
-            
-            if (getError) {
-                console.error('❌ Error al obtener factura:', getError);
-                throw getError;
-            }
-            
-            if (invoice.status !== 'draft') {
-                throw new Error('Solo se pueden finalizar facturas en estado borrador');
-            }
-        }
-        
-        // Actualizar el estado de la factura
-        const { error } = await supabase
+        // Obtener la factura actual
+        const { data: invoice, error: fetchError } = await supabase
             .from('invoices')
-            .update({ 
-                status, 
-                updated_at: new Date().toISOString()
-            })
-            .eq('id', id)
-            .eq('user_id', userId);
-        
-        if (error) {
-            console.error('❌ Error al actualizar estado:', error);
-            throw error;
-        }
-        
-        // Obtener la factura actualizada
-        const { data: updatedInvoice, error: fetchError } = await supabase
-            .from('invoices')
-            .select(`
-                *,
-                clients!inner(*)
-            `)
+            .select('*')
             .eq('id', id)
             .single();
         
-        if (fetchError) {
-            console.error('❌ Error al obtener factura actualizada:', fetchError);
-            throw fetchError;
+        if (fetchError || !invoice) {
+            throw new Error(`Error al obtener factura: ${fetchError?.message || 'No encontrada'}`);
         }
         
-        console.log('✅ Estado actualizado:', updatedInvoice);
+        console.log('Factura original:', invoice);
+        
+        // Si estamos pasando de borrador a definitiva, cambiar el número
+        let invoiceNumber = invoice.invoice_number;
+        if (invoice.status === 'draft' && newStatus === 'final') {
+            // Quitar el prefijo "BORRADOR-" del número
+            invoiceNumber = invoice.invoice_number.replace('BORRADOR-', '');
+            console.log(`Número de factura sin prefijo: "${invoiceNumber}"`);
+            
+            // Verificar que no exista otra factura con ese número
+            console.log(`Verificando si existe otra factura con número ${invoiceNumber} (distinta a la ID ${id})`);
+            
+            try {
+                const { data: existingInvoice, error: checkError } = await supabase
+                    .from('invoices')
+                    .select('id')
+                    .eq('invoice_number', invoiceNumber)
+                    .neq('id', id);
+                
+                console.log('Resultado de la verificación:', { data: existingInvoice, error: checkError });
+                
+                if (existingInvoice && existingInvoice.length > 0) {
+                    console.error(`Ya existe otra factura con el número ${invoiceNumber}:`, existingInvoice);
+                    throw new Error(`Ya existe una factura con el número ${invoiceNumber}`);
+                }
+            } catch (checkErr) {
+                console.error('Error al verificar factura existente:', checkErr);
+                throw checkErr;
+            }
+        }
+        
+        // Actualizar la factura
+        console.log(`Actualizando factura a estado ${newStatus} con número ${invoiceNumber}`);
+        const { data: updatedInvoice, error: updateError } = await supabase
+            .from('invoices')
+            .update({ 
+                status: newStatus,
+                invoice_number: invoiceNumber
+            })
+            .eq('id', id)
+            .select()
+            .single();
+        
+        if (updateError) {
+            console.error('Error en la actualización:', updateError);
+            throw new Error(`Error al actualizar estado: ${updateError.message}`);
+        }
+        
+        console.log('Factura actualizada:', updatedInvoice);
+        
+        // Actualizar contador en la serie si es necesario
+        if (newStatus === 'final') {
+            // Extraer el número de la serie
+            const seriesId = invoice.series_id;
+            console.log(`Actualizando contador para la serie ID: ${seriesId}`);
+            
+            try {
+                await updateSeriesInvoiceCount(seriesId);
+                console.log('Contador de serie actualizado correctamente');
+            } catch (seriesError) {
+                console.error('Error al actualizar contador de serie:', seriesError);
+                // No interrumpir el proceso si falla la actualización del contador
+            }
+        }
+        
+        console.log('Proceso completado con éxito');
         console.groupEnd();
-        return updatedInvoice as Invoice;
+        return updatedInvoice;
     } catch (error) {
-        console.error('❌ Error en updateInvoiceStatus:', error);
+        console.error('Error al actualizar estado de factura:', error);
         console.groupEnd();
         throw error;
     }
+}
+
+// Función que genera el número de factura
+export async function generateInvoiceNumber(seriesId: string): Promise<string> {
+  const { data: series, error: seriesError } = await supabase
+    .from('invoice_series')
+    .select('*')
+    .eq('id', seriesId)
+    .single();
+  
+  if (seriesError || !series) {
+    throw new Error('Serie no encontrada');
+  }
+  
+  // Obtener el año actual para el formato
+  const currentYear = new Date().getFullYear().toString().slice(-2);
+  
+  // Buscar facturas existentes para detectar huecos
+  const { data: finalInvoices } = await supabase
+    .from('invoices')
+    .select('invoice_number')
+    .eq('series_id', seriesId)
+    .order('created_at', { ascending: true });
+  
+  // Extraer números de facturas existentes
+  let existingNumbers: number[] = [];
+  
+  if (finalInvoices && finalInvoices.length > 0) {
+    // Procesar el formato para extraer la parte numérica
+    // Ejemplo: si el formato es 'FA%%%-####', nos interesa el '####'
+    const digitPattern = series.serie_format.match(/#+/);
+    const digitFormat = digitPattern ? digitPattern[0] : '####';
+    const digitCount = digitFormat.length;
+    
+    // Crear una expresión regular que busque exactamente ese número de dígitos al final
+    const numberPattern = new RegExp(`\\d{${digitCount}}$`);
+    
+    // Extraer números
+    const numbers = finalInvoices.map(inv => {
+      // Quitar el prefijo BORRADOR- si existe
+      const cleanNumber = inv.invoice_number.replace('BORRADOR-', '');
+      const match = cleanNumber.match(numberPattern);
+      return match ? parseInt(match[0], 10) : 0;
+    }).filter(n => n > 0);
+    
+    existingNumbers = [...numbers];
+  }
+  
+  // Encontrar el primer hueco o el siguiente número
+  let nextNumber = 1;
+  if (existingNumbers.length > 0) {
+    existingNumbers.sort((a, b) => a - b);
+    
+    // Buscar primer hueco
+    for (let i = 1; i <= existingNumbers.length + 1; i++) {
+      if (!existingNumbers.includes(i)) {
+        nextNumber = i;
+        break;
+      }
+    }
+    
+    // Si no encontramos hueco, usar el siguiente al máximo
+    if (nextNumber === 1 && existingNumbers.length > 0) {
+      nextNumber = Math.max(...existingNumbers) + 1;
+    }
+  }
+  
+  // Determinar el patrón de dígitos en el formato (ejem: #### o ##)
+  const digitPattern = series.serie_format.match(/#+/);
+  const digitFormat = digitPattern ? digitPattern[0] : '####';
+  const digitCount = digitFormat.length;
+  
+  // Formatear el número con ceros a la izquierda según el número de # en el formato
+  const formattedNumber = nextNumber.toString().padStart(digitCount, '0');
+  
+  // Generar el número de factura
+  let invoiceNumber = series.serie_format;
+  
+  // Reemplazar el año (patrón %% o similar)
+  const yearPattern = invoiceNumber.match(/%+/);
+  if (yearPattern) {
+    const yearFormat = yearPattern[0];
+    // Si hay 4 %, usar año completo, sino los últimos dígitos
+    const yearValue = yearFormat.length === 4 
+      ? new Date().getFullYear().toString()
+      : currentYear;
+    invoiceNumber = invoiceNumber.replace(yearFormat, yearValue);
+  }
+  
+  // Reemplazar el número secuencial (patrón ### o similar)
+  invoiceNumber = invoiceNumber.replace(/#+/, formattedNumber);
+  
+  // Para facturas borrador, añadir el prefijo
+  return `BORRADOR-${invoiceNumber}`;
 }

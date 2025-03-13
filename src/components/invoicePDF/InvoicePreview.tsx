@@ -36,6 +36,15 @@ export const InvoicePreview = forwardRef<HTMLDivElement, InvoicePreviewProps>(
     const client = invoice?.client as Client || {} as Client;
     const company = invoice?.company as Company || {} as Company;
     
+    // Asegurar que siempre tengamos la versión correcta del número
+    // para facturas borrador (asegurando que tenga el prefijo)
+    const displayNumber = invoice.status === 'draft' && !invoice.invoice_number?.startsWith('BORRADOR-')
+      ? `BORRADOR-${invoice.invoice_number}`
+      : invoice.invoice_number;
+    
+    // Número a mostrar en el PDF (sin el prefijo BORRADOR-)
+    const cleanNumber = displayNumber?.replace('BORRADOR-', '');
+
     return (
       <div 
         ref={ref} 
@@ -52,7 +61,7 @@ export const InvoicePreview = forwardRef<HTMLDivElement, InvoicePreviewProps>(
         <div className="flex justify-between mb-8">
           <div>
             <h1 className="text-2xl font-bold">FACTURA</h1>
-            <p className="mt-1">Nº: {invoiceNumber}</p>
+            <p className="mt-1">Nº: {cleanNumber}</p>
             <p>Fecha: {formatDate(invoiceDate)}</p>
           </div>
           {/* Logo temporarily disabled until implemented in database
