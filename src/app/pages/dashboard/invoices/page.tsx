@@ -227,23 +227,26 @@ export default function InvoicesPage() {
     setIsFinalizarDialogOpen(true)
   }
 
-  // Add this new function to handle the actual finalization
+  // Handle finalizar confirmation
   const handleFinalizarConfirmation = async () => {
-    if (!invoiceToFinalize) return
+    if (!invoiceToFinalize) return;
     
     try {
-      const updatedInvoice = await updateInvoiceStatus(invoiceToFinalize.id, "final")
-      // Update the invoice in the list
-      setInvoices(invoices.map(inv => 
-        inv.id === updatedInvoice.id ? updatedInvoice : inv
-      ))
-      toast.success("Factura finalizada correctamente")
-      setIsFinalizarDialogOpen(false)
+      // Actualizar el estado de la factura
+      await updateInvoiceStatus(invoiceToFinalize.id, "final");
+      
+      // Recargar todas las facturas para refrescar la lista
+      const updatedInvoices = await getInvoices();
+      setInvoices(updatedInvoices);
+      
+      // Cerrar el diálogo y mostrar mensaje de éxito
+      setIsFinalizarDialogOpen(false);
+      toast.success("Factura finalizada correctamente");
     } catch (error) {
-      console.error("Error al finalizar la factura:", error)
-      toast.error("Error al finalizar la factura")
+      console.error("Error al finalizar la factura:", error);
+      toast.error(`Error al finalizar la factura: ${error instanceof Error ? error.message : 'Error desconocido'}`);
     }
-  }
+  };
 
   // Reemplazar función handleNewInvoice y isCreateDialogOpen
   const refreshInvoices = async () => {

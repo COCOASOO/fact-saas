@@ -25,9 +25,6 @@ import {
   checkSeriesHasInvoices,
   checkDuplicateFormat,
 } from "@/app/routes/invoice_series/route";
-import { createClient } from "@/lib/supabase/supabaseClient";
-
-const supabase = createClient();
 
 interface InvoiceSeriesDialogProps {
   open: boolean;
@@ -93,18 +90,19 @@ export function InvoiceSeriesDialog({
           "El formato debe incluir al menos tres # para la numeración";
       }
       // Verificar formato duplicado si no hay otros errores
-      else {
+      else if (!series || formData.serie_format !== series.serie_format) {
         try {
+          // Añadir un prefijo único de usuario al formato para evitar colisiones
+          // Por ejemplo, añadir iniciales del email u otra información única
           const isDuplicate = await checkDuplicateFormat(
             formData.serie_format,
             series?.id
           );
           if (isDuplicate) {
-            newErrors.serie_format = "Ya existe una serie con este formato";
+            newErrors.serie_format = "Este formato ya está en uso";
           }
         } catch (error) {
-          console.error("Error checking duplicate format:", error);
-          newErrors.serie_format = "Error al validar el formato";
+          newErrors.serie_format = "Error al verificar el formato";
         }
       }
     }

@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase/supabaseClient"
-import type { Invoice } from "@/app/types/invoice"
+import type { Invoice, InvoiceStatus } from "@/app/types/invoice"
 import { getNextInvoiceNumber, updateSeriesInvoiceCount } from "../invoice_series/route";
 
 const supabase = createClient()
@@ -204,94 +204,69 @@ export async function deleteInvoice(id: string) {
     }
 }
 
-export async function updateInvoiceStatus(id: string, newStatus: string): Promise<Invoice> {
-    console.group(`🔄 updateInvoiceStatus(${id}, ${newStatus})`);
+export async function updateInvoiceStatus(id: string, status: InvoiceStatus) {
+  try {
+    const userId = await getCurrentUserId();
+    const invoice = await getInvoiceById(id);
     
-    try {
-        // Obtener la factura actual
-        const { data: invoice, error: fetchError } = await supabase
-            .from('invoices')
-            .select('*')
-            .eq('id', id)
-            .single();
-        
-        if (fetchError || !invoice) {
-            throw new Error(`Error al obtener factura: ${fetchError?.message || 'No encontrada'}`);
-        }
-        
-        console.log('Factura original:', invoice);
-        
-        // Si estamos pasando de borrador a definitiva, cambiar el número
-        let invoiceNumber = invoice.invoice_number;
-        if (invoice.status === 'draft' && newStatus === 'final') {
-            // Quitar el prefijo "BORRADOR-" del número
-            invoiceNumber = invoice.invoice_number.replace('BORRADOR-', '');
-            console.log(`Número de factura sin prefijo: "${invoiceNumber}"`);
-            
-            // Verificar que no exista otra factura con ese número
-            console.log(`Verificando si existe otra factura con número ${invoiceNumber} (distinta a la ID ${id})`);
-            
-            try {
-                const { data: existingInvoice, error: checkError } = await supabase
-                    .from('invoices')
-                    .select('id')
-                    .eq('invoice_number', invoiceNumber)
-                    .neq('id', id);
-                
-                console.log('Resultado de la verificación:', { data: existingInvoice, error: checkError });
-                
-                if (existingInvoice && existingInvoice.length > 0) {
-                    console.error(`Ya existe otra factura con el número ${invoiceNumber}:`, existingInvoice);
-                    throw new Error(`Ya existe una factura con el número ${invoiceNumber}`);
-                }
-            } catch (checkErr) {
-                console.error('Error al verificar factura existente:', checkErr);
-                throw checkErr;
-            }
-        }
-        
-        // Actualizar la factura
-        console.log(`Actualizando factura a estado ${newStatus} con número ${invoiceNumber}`);
-        const { data: updatedInvoice, error: updateError } = await supabase
-            .from('invoices')
-            .update({ 
-                status: newStatus,
-                invoice_number: invoiceNumber
-            })
-            .eq('id', id)
-            .select()
-            .single();
-        
-        if (updateError) {
-            console.error('Error en la actualización:', updateError);
-            throw new Error(`Error al actualizar estado: ${updateError.message}`);
-        }
-        
-        console.log('Factura actualizada:', updatedInvoice);
-        
-        // Actualizar contador en la serie si es necesario
-        if (newStatus === 'final') {
-            // Extraer el número de la serie
-            const seriesId = invoice.series_id;
-            console.log(`Actualizando contador para la serie ID: ${seriesId}`);
-            
-            try {
-                await updateSeriesInvoiceCount(seriesId);
-                console.log('Contador de serie actualizado correctamente');
-            } catch (seriesError) {
-                console.error('Error al actualizar contador de serie:', seriesError);
-                // No interrumpir el proceso si falla la actualización del contador
-            }
-        }
-        
-        console.log('Proceso completado con éxito');
-        console.groupEnd();
-        return updatedInvoice;
-    } catch (error) {
-        console.error('Error al actualizar estado de factura:', error);
-        console.groupEnd();
-        throw error;
+    // Si no es una actualización a estado final, hacemos la actualización simple
+    if (status !== 'final') {
+      const { error } = await supabase
+        .from('invoices')
+        .update({ status })
+        .eq('id', id)
+        .eq('user_id', userId);
+      
+      if (error) throw error;
+      return true;
     }
+    
+    // Para finalizar facturas, necesitamos más validaciones
+    
+    // 1. Verificar si hay una factura con el mismo número (para el mismo usuario)
+    const cleanInvoiceNumber = invoice.invoice_number.replace('BORRADOR-', '');
+    const { data: existingInvoices } = await supabase
+      .from('invoices')
+      .select('id, invoice_number')
+      .eq('invoice_number', cleanInvoiceNumber)
+      .eq('user_id', userId)
+      .neq('id', id)
+      .eq('status', 'final');
+    
+    if (existingInvoices && existingInvoices.length > 0) {
+      console.error('Ya existe otra factura con el número', cleanInvoiceNumber, existingInvoices);
+      throw new Error(`Ya existe una factura con el número ${cleanInvoiceNumber}`);
+    }
+    
+    // 2. Verificar que el PDF existe en storage
+    if (!invoice.pdf_url) {
+      throw new Error('La factura no tiene un PDF asociado');
+    }
+    
+    // 3. Actualizar el estado y el número de factura (quitando el prefijo BORRADOR-)
+    const { error } = await supabase
+      .from('invoices')
+      .update({ 
+        status,
+        invoice_number: cleanInvoiceNumber,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', id)
+      .eq('user_id', userId);
+    
+    if (error) throw error;
+    
+    // 4. Actualizar el contador de la serie si es necesario
+    if (invoice.series_id) {
+      await updateSeriesInvoiceCount(invoice.series_id);
+    }
+    
+    console.log(`✅ Factura ${id} marcada como definitiva con número ${cleanInvoiceNumber}`);
+    return true;
+  } catch (error) {
+    console.error('Error al actualizar estado de factura:', error);
+    throw error;
+  }
 }
 
 // Función que genera el número de factura
