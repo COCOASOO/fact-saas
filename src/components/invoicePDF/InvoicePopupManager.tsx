@@ -499,15 +499,6 @@ export const InvoicePopupManager = forwardRef<
                   <h2 className="text-xl font-semibold">
                     Vista Previa de Factura
                   </h2>
-                  <div className="flex gap-2">
-                    <Button size="sm" onClick={handleDownloadPDF}>
-                      <Download className="mr-2 h-4 w-4" />
-                      Descargar PDF
-                    </Button>
-                    <Button size="sm" variant="outline" onClick={togglePreview}>
-                      Ocultar Preview
-                    </Button>
-                  </div>
                 </div>
                 <div className="flex-grow overflow-auto p-4" ref={previewRef}>
                   {getPreviewData() && (
@@ -534,15 +525,6 @@ export const InvoicePopupManager = forwardRef<
             footer={formFooter}
             className={`${isPreviewVisible ? "border-l" : ""}`}
           >
-            <Button
-              variant="outline"
-              className="mb-4 w-full"
-              onClick={togglePreview}
-            >
-              <Eye className="mr-2 h-4 w-4" />
-              {isPreviewVisible ? "Ocultar Preview" : "Mostrar Preview"}
-            </Button>
-
             <div style={{ position: "relative", zIndex: 100 }}>
               <InvoiceForm
                 key={`invoice-form-${isOpen ? "open" : "closed"}`}

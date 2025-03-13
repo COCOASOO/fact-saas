@@ -36,7 +36,6 @@ import { InvoicePopupManager } from "@/components/invoicePDF/InvoicePopupManager
 import { Skeleton } from "@/components/ui/skeleton"
 import { PDFGenerator } from '@/components/invoicePDF/pdfService'
 import React from "react"
-import { generatePDF } from '@/components/invoicePDF/InvoicePreviewWrapper'
 
 const getStatusColor = (status: Invoice["status"]) => {
   switch (status) {
