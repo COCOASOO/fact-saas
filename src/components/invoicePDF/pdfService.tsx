@@ -29,7 +29,7 @@ export class PDFGenerator {
     try {
       // Configuración para html2pdf
       const options = {
-        filename: `factura-${invoice.invoice_number || 'sin-numero'}.pdf`,
+        filename: `${invoice.invoice_number || 'sin-numero'}.pdf`,
         image: { type: 'jpeg', quality: 0.98 },
         html2canvas: { 
           scale: 2,
@@ -57,8 +57,9 @@ export class PDFGenerator {
         throw new Error(`Error al generar el PDF: ${pdfError}`);
       }
       
-      // Nombre de archivo único
-      const fileName = `invoice_${invoice.id}_${Date.now()}.pdf`;
+      // Nombre de archivo descriptivo usando el número de factura sin el prefijo BORRADOR-
+      const cleanInvoiceNumber = invoice.invoice_number?.replace('BORRADOR-', '') || 'sin-numero';
+      const fileName = `${cleanInvoiceNumber}.pdf`;
       
       // Subir a Supabase Storage
       console.log('Subiendo PDF a Storage...');
@@ -189,7 +190,7 @@ export class PDFGenerator {
       const blob = await response.blob();
       const objectUrl = URL.createObjectURL(blob);
       
-      const filename = `factura-${invoice.invoice_number || 'sin-numero'}.pdf`;
+      const filename = `${invoice.invoice_number || 'sin-numero'}.pdf`;
       
       const link = document.createElement('a');
       link.href = objectUrl;

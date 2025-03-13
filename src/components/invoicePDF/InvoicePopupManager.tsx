@@ -270,7 +270,7 @@ export const InvoicePopupManager = forwardRef<
               // Generar PDF como blob
               const options = {
                 margin: 10,
-                filename: `factura-${savedInvoice.invoice_number}.pdf`,
+                filename: `${savedInvoice.invoice_number}.pdf`,
                 image: { type: 'jpeg', quality: 0.98 },
                 html2canvas: { 
                   scale: 2,
@@ -295,8 +295,10 @@ export const InvoicePopupManager = forwardRef<
               
               console.log("PDF generado correctamente, tamaño:", pdfBlob.size);
               
-              // Subir a Storage
-              const fileName = `invoice_${savedInvoice.id}_${Date.now()}.pdf`;
+              // Nombre de archivo sin prefijo BORRADOR-
+              const cleanInvoiceNumber = savedInvoice.invoice_number?.replace('BORRADOR-', '');
+              const fileName = `${cleanInvoiceNumber}.pdf`;
+              
               console.log("Subiendo PDF a Storage:", fileName);
               
               // Importación dinámica para asegurar que uploadPDF está accesible
