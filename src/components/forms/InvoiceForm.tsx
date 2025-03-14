@@ -18,7 +18,7 @@ import {
   calculateTaxAmount,
   calculateIrpfAmount,
   calculateTotalAmount,
-} from "@/lib/utils/invoice-calculations";
+} from "@/app/utils/invoice-calculations";
 import { getClientById, getClients } from "@/app/routes/clients/route";
 import { Client } from "@/app/types/client";
 import { Company, getUserCompany } from "@/app/routes/companies/route";

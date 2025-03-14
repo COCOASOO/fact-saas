@@ -14,7 +14,7 @@ import {
   NavigationMenuList,
   NavigationMenuTrigger,
 } from "@/components/ui/navigation-menu";
-import { cn } from "@/lib/utils/utils";
+import { cn } from "@/app/utils/utils";
 
 export default function GuestNavbar() {
   const [user, setUser] = useState<User | null>(null);

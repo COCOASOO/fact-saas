@@ -4,6 +4,7 @@ import { toast } from 'sonner';
 import { uploadPDF } from '@/lib/supabase/storageService';
 import { updateInvoice } from '@/app/routes/invoices/route';
 import { createClient } from '@/lib/supabase/supabaseClient';
+import { NextRequest, NextResponse } from 'next/server';
 
 // Clase para gestionar la generación de PDFs
 export class PDFGenerator {
@@ -214,5 +215,38 @@ export class PDFGenerator {
         throw error;
       }
     }
+  }
+}
+
+const supabase = createClient();
+
+// Función interna para manejar el registro
+async function signUpUser(email: string, password: string, userData?: any) {
+  const { data, error } = await supabase.auth.signUp({
+    email,
+    password,
+    options: {
+      data: userData
+    }
+  });
+  
+  if (error) throw error;
+  return data;
+}
+
+// Exportar como POST para cumplir con el formato de Next.js
+export async function POST(req: NextRequest) {
+  try {
+    const body = await req.json();
+    const { email, password, ...userData } = body;
+    
+    const data = await signUpUser(email, password, userData);
+    
+    return NextResponse.json({ data });
+  } catch (error) {
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : 'Error desconocido' },
+      { status: 500 }
+    );
   }
 }

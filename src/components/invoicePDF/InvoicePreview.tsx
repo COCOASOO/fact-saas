@@ -1,6 +1,6 @@
 import React, { forwardRef, useEffect } from "react";
 import { Invoice } from "@/app/types/invoice";
-import { formatCurrency, formatDate } from "@/lib/utils/invoice-calculations";
+import { formatCurrency, formatDate } from "@/app/utils/invoice-calculations";
 import { Client } from "@/app/types/client";
 import { Company } from "@/app/types/company";
 

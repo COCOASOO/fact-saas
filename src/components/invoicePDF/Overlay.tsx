@@ -1,5 +1,5 @@
 import React, { useEffect } from "react";
-import { cn } from "@/lib/utils/utils";
+import { cn } from "@/app/utils/utils";
 
 interface OverlayProps {
   isOpen: boolean;
