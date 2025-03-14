@@ -4,7 +4,6 @@ import { toast } from 'sonner';
 import { uploadPDF } from '@/lib/supabase/storageService';
 import { updateInvoice } from '@/app/routes/invoices/route';
 import { createClient } from '@/lib/supabase/supabaseClient';
-import { NextRequest, NextResponse } from 'next/server';
 
 // Clase para gestionar la generación de PDFs
 export class PDFGenerator {
@@ -28,7 +27,7 @@ export class PDFGenerator {
     console.log('Usuario autenticado:', user.id);
 
     try {
-      // Configuración para html2pdf
+      // Nueva configuración optimizada para evitar páginas en blanco
       const options = {
         filename: `${invoice.invoice_number || 'sin-numero'}.pdf`,
         image: { type: 'jpeg', quality: 0.98 },
@@ -36,13 +35,31 @@ export class PDFGenerator {
           scale: 2,
           useCORS: true,
           backgroundColor: 'white',
-          logging: true
+          // Forzar la captura exacta del contenido visible
+          windowWidth: element.scrollWidth,
+          windowHeight: element.scrollHeight,
+          // Evitar recortes
+          x: 0,
+          y: 0,
+          width: element.scrollWidth,
+          height: element.scrollHeight,
+          // Desactivar logging para mejorar rendimiento
+          logging: false
         },
         jsPDF: { 
           unit: 'mm', 
           format: 'a4', 
-          orientation: 'portrait'
+          orientation: 'portrait',
+          // Optimizaciones de rendimiento
+          putOnlyUsedFonts: true,
+          compress: true,
+          // Definir márgenes mínimos pero suficientes
+          margins: { top: 5, right: 5, bottom: 5, left: 5 }
         },
+        // Estrategia agresiva contra páginas en blanco
+        pagebreak: { mode: ['avoid-all', 'css', 'legacy'] },
+        // Forzar una sola página
+        enableLinks: false,
         output: 'blob'
       };
       
@@ -51,7 +68,22 @@ export class PDFGenerator {
       // Generar PDF como blob con manejo de errores mejorado
       let pdfBlob;
       try {
-        pdfBlob = await html2pdf().from(element).set(options).outputPdf('blob');
+        pdfBlob = await html2pdf()
+          .from(element)
+          .set(options)
+          .toPdf() // Convertir a PDF directamente
+          .get('pdf') // Obtener el objeto PDF
+          .then((pdf: { internal: { getNumberOfPages: () => number; }; deletePage: (arg0: any) => void; output: (arg0: string) => any; }) => {
+            // Asegurarnos de que el PDF tiene solo una página
+            if (pdf.internal.getNumberOfPages() > 1) {
+              // Eliminar todas las páginas después de la primera
+              for (let i = pdf.internal.getNumberOfPages(); i > 1; i--) {
+                pdf.deletePage(i);
+              }
+            }
+            return pdf.output('blob');
+          });
+          
         console.log('PDF generado correctamente, tamaño:', pdfBlob.size);
       } catch (pdfError) {
         console.error('Error al generar el PDF:', pdfError);
@@ -97,8 +129,9 @@ export class PDFGenerator {
     tempContainer.style.position = 'absolute';
     tempContainer.style.left = '-9999px';
     tempContainer.style.top = '0';
-    tempContainer.style.width = '210mm';
-    tempContainer.style.height = '297mm';
+    // Ajustes críticos para evitar desbordamiento y páginas en blanco
+    tempContainer.style.width = '210mm';  
+    tempContainer.style.height = 'auto';
     tempContainer.style.overflow = 'hidden';
     tempContainer.style.backgroundColor = 'white';
     document.body.appendChild(tempContainer);
@@ -106,14 +139,31 @@ export class PDFGenerator {
     // Clonar el contenido
     const clonedElement = originalElement.cloneNode(true) as HTMLElement;
     
-    // Ajustar estilos para el PDF
+    // Ajustar estilos para el PDF - correcciones críticas
     clonedElement.style.transform = 'none';
     clonedElement.style.width = '210mm';
-    clonedElement.style.height = '297mm';
-    clonedElement.style.overflow = 'hidden';
+    clonedElement.style.height = 'auto'; 
     clonedElement.style.margin = '0';
+    clonedElement.style.padding = '0';
     clonedElement.style.boxSizing = 'border-box';
     
+    // Eliminar cualquier elemento que pueda causar desbordamiento
+    const overflowingElements = clonedElement.querySelectorAll('div, p, table, section');
+    overflowingElements.forEach((el: Element) => {
+      if (el instanceof HTMLElement) {
+        el.style.overflow = 'visible';
+        el.style.height = 'auto';
+        el.style.maxHeight = 'none';
+        // Eliminar márgenes y paddings excesivos
+        if (parseInt(window.getComputedStyle(el).marginBottom) > 15) {
+          el.style.marginBottom = '15px';
+        }
+        if (parseInt(window.getComputedStyle(el).paddingBottom) > 15) {
+          el.style.paddingBottom = '15px';
+        }
+      }
+    });
+
     tempContainer.appendChild(clonedElement);
 
     try {
@@ -215,38 +265,5 @@ export class PDFGenerator {
         throw error;
       }
     }
-  }
-}
-
-const supabase = createClient();
-
-// Función interna para manejar el registro
-async function signUpUser(email: string, password: string, userData?: any) {
-  const { data, error } = await supabase.auth.signUp({
-    email,
-    password,
-    options: {
-      data: userData
-    }
-  });
-  
-  if (error) throw error;
-  return data;
-}
-
-// Exportar como POST para cumplir con el formato de Next.js
-export async function POST(req: NextRequest) {
-  try {
-    const body = await req.json();
-    const { email, password, ...userData } = body;
-    
-    const data = await signUpUser(email, password, userData);
-    
-    return NextResponse.json({ data });
-  } catch (error) {
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Error desconocido' },
-      { status: 500 }
-    );
   }
 }
