@@ -4,3 +4,4 @@ Saas facturación
 - Insertar clientes
 - Insertar empresas
 - Crear facturas
+- Crear series
