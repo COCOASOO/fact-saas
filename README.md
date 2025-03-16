@@ -5,3 +5,4 @@ Saas facturación
 - Insertar empresas
 - Crear facturas
 - Crear series
+- Previsualizador de facturas
