@@ -1,355 +1,443 @@
 "use client";
 
 import { useAuth } from "@/app/contexts/authContext";
-import { getCompanies, addCompany, updateCompany, deleteCompany, getCompanyById, type Company } from "@/app/routes/companies/route";
-import { getClients, addClient, updateClient, deleteClient, getClientById, type Client } from "@/app/routes/clients/route";
-import { getPayments, addPayment, getPaymentById, type Payment } from "@/app/routes/payments/route";
-import { getVerifactuLogs, addVerifactuLog, type VerifactuLog } from "@/app/routes/verifactu_logs/route";
-import { getUsers, getUserById, getCurrentUser, type User } from "@/app/routes/users/route";
-import { useState } from "react";
+import { getCompanies, type Company } from "@/app/routes/companies/route";
+import { getClients, type Client } from "@/app/routes/clients/route";
+import { getPayments, type Payment } from "@/app/routes/payments/route";
+import { getInvoices} from "@/app/routes/invoices/route";
+import { type Invoice } from "@/app/types/invoice";
+import { useEffect, useState } from "react";
+import Link from "next/link";
+import { 
+  Card, 
+  CardContent, 
+  CardDescription, 
+  CardFooter, 
+  CardHeader, 
+  CardTitle 
+} from "@/components/ui/card";
+import { 
+  CircleAlert, 
+  FileText, 
+  Users, 
+  Building, 
+  CreditCard,
+  TrendingUp,
+  Calendar,
+  CheckCircle,
+  Clock,
+  ChevronRight,
+  BarChart2
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Progress } from "@/components/ui/progress";
+import { Skeleton } from "@/components/ui/skeleton";
+import { formatCurrency } from "@/app/utils/invoice-calculations";
 
 export default function Dashboard() {
-    const {user} = useAuth();
-    const [companies, setCompanies] = useState<Company[]>([]);
-    const [clients, setClients] = useState<Client[]>([]);
-    const [payments, setPayments] = useState<Payment[]>([]);
-    const [logs, setLogs] = useState<VerifactuLog[]>([]);
-    const [users, setUsers] = useState<User[]>([]);
-    const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const { user } = useAuth();
+  const [companies, setCompanies] = useState<Company[]>([]);
+  const [clients, setClients] = useState<Client[]>([]);
+  const [payments, setPayments] = useState<Payment[]>([]);
+  const [invoices, setInvoices] = useState<Invoice[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-    // Datos de prueba para crear una empresa
-    const sampleCompany = {
-        name: `Empresa Prueba ${Math.floor(Math.random() * 1000)}`,
-        nif: `B${Math.floor(Math.random() * 100000000)}`,
-        country: "ESP",
-        email: "test@example.com"
+  useEffect(() => {
+    const loadDashboardData = async () => {
+      try {
+        setIsLoading(true);
+        const [companiesData, clientsData, paymentsData, invoicesData] = await Promise.all([
+          getCompanies(),
+          getClients(),
+          getPayments(),
+          getInvoices()
+        ]);
+        
+        setCompanies(companiesData);
+        setClients(clientsData);
+        setPayments(paymentsData);
+        setInvoices(invoicesData);
+      } catch (error) {
+        console.error("Error al cargar datos del dashboard:", error);
+      } finally {
+        setIsLoading(false);
+      }
     };
 
-    // Datos de prueba para crear un cliente
-    const sampleClient = {
-        company_id: "b25dc479-ba38-44b6-a4cb-34dfda642ef9", // Asegúrate de usar un ID válido
-        name: `Cliente Prueba ${Math.floor(Math.random() * 1000)}`,
-        nif: `B${Math.floor(Math.random() * 100000000)}`,
-        country: "ESP",
-        applies_irpf: true
-    };
+    loadDashboardData();
+  }, []);
 
-    // Datos de prueba para crear un pago
-    const samplePayment = {
-        invoice_id: "19be3e74-a043-4755-a458-71bec95710cd", // Asegúrate de usar un ID válido
-        amount: Math.floor(Math.random() * 1000) + 100,
-        payment_method: 'card' as const,
-        status: 'completed' as const,
-    };
+  // Calcular estadísticas para mostrar
+  const totalInvoices = invoices.length;
+  const pendingInvoices = invoices.filter(inv => inv.status === "draft").length;
+  const completedInvoices = invoices.filter(inv => inv.status === "final").length;
+  
+  // Calcular ingresos totales y pendientes
+  const totalRevenue = payments.reduce((sum, payment) => sum + payment.amount, 0);
+  const totalInvoiceAmount = invoices.reduce((sum, invoice) => sum + invoice.total_amount, 0);
+  const pendingAmount = totalInvoiceAmount - totalRevenue;
+  
+  // Porcentaje de facturación cobrada
+  const collectionRate = totalInvoiceAmount > 0 
+    ? Math.round((totalRevenue / totalInvoiceAmount) * 100) 
+    : 0;
 
-    // Datos de prueba para crear un log
-    const sampleLog = {
-        invoice_id: "19be3e74-a043-4755-a458-71bec95710cd", // Asegúrate de usar un ID válido
-        request_payload: {
-            test: true,
-            timestamp: new Date().toISOString(),
-            data: `Test data ${Math.floor(Math.random() * 1000)}`
-        }
-    };
+  // Obtener las facturas más recientes (limitadas a 5)
+  const recentInvoices = [...invoices]
+    .sort((a, b) => new Date(b.invoice_date).getTime() - new Date(a.invoice_date).getTime())
+    .slice(0, 5);
 
-    // Manejadores para Companies
-    const handleGetCompanies = async () => {
-        try {
-            const result = await getCompanies();
-            setCompanies(result);
-        } catch (error) {
-            console.error("Error al obtener empresas:", error);
-        }
-    };
+  // Obtener pagos recientes (limitados a 5)
+  const recentPayments = [...payments]
+    .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+    .slice(0, 5);
 
-    const handleCreateCompany = async () => {
-        try {
-            const result = await addCompany(sampleCompany);
-            handleGetCompanies();
-        } catch (error) {
-            console.error("Error al crear empresa:", error);
-        }
-    };
+  return (
+    <div className="container p-6">
+      <div className="mb-8">
+        <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
+        {user && (
+          <p className="text-muted-foreground mt-2">
+            Bienvenido, {user.email}. Aquí tienes un resumen de tu actividad.
+          </p>
+        )}
+      </div>
 
-    const handleUpdateCompany = async () => {
-        if (companies.length === 0) return;
-        try {
-            const result = await updateCompany(companies[0].id, {
-                name: `Empresa Actualizada ${Math.floor(Math.random() * 1000)}`
-            });
-            handleGetCompanies();
-        } catch (error) {
-            console.error("Error al actualizar empresa:", error);
-        }
-    };
+      {/* Tarjetas de estadísticas */}
+      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4 mb-8">
+        {/* Número de facturas */}
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium">
+              Total de facturas
+            </CardTitle>
+            <FileText className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            {isLoading ? (
+              <Skeleton className="h-8 w-24" />
+            ) : (
+              <div className="text-2xl font-bold">{totalInvoices}</div>
+            )}
+            <p className="text-xs text-muted-foreground mt-1">
+              {pendingInvoices} pendientes · {completedInvoices} finalizadas
+            </p>
+          </CardContent>
+        </Card>
 
-    const handleDeleteCompany = async () => {
-        if (companies.length === 0) return;
-        try {
-            await deleteCompany(companies[0].id);
-            handleGetCompanies();
-        } catch (error) {
-            console.error("Error al eliminar empresa:", error);
-        }
-    };
+        {/* Número de clientes */}
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium">
+              Clientes activos
+            </CardTitle>
+            <Users className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            {isLoading ? (
+              <Skeleton className="h-8 w-24" />
+            ) : (
+              <div className="text-2xl font-bold">{clients.length}</div>
+            )}
+            <p className="text-xs text-muted-foreground mt-1">
+              Distribuidos en {companies.length} empresas
+            </p>
+          </CardContent>
+        </Card>
 
-    // Manejadores para Clients
-    const handleGetClients = async () => {
-        try {
-            const result = await getClients();
-            setClients(result);
-        } catch (error) {
-            console.error("Error al obtener clientes:", error);
-        }
-    };
+        {/* Ingresos totales */}
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium">
+              Ingresos totales
+            </CardTitle>
+            <TrendingUp className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            {isLoading ? (
+              <Skeleton className="h-8 w-36" />
+            ) : (
+              <div className="text-2xl font-bold">{formatCurrency(totalRevenue)}</div>
+            )}
+            <p className="text-xs text-muted-foreground mt-1">
+              {payments.length} pagos registrados
+            </p>
+          </CardContent>
+        </Card>
 
-    const handleCreateClient = async () => {
-        try {
-            const result = await addClient(sampleClient);
-            handleGetClients();
-        } catch (error) {
-            console.error("Error al crear cliente:", error);
-        }
-    };
+        {/* Cobros pendientes */}
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium">
+              Pendiente de cobro
+            </CardTitle>
+            <CircleAlert className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            {isLoading ? (
+              <Skeleton className="h-8 w-36" />
+            ) : (
+              <div className="text-2xl font-bold">{formatCurrency(pendingAmount)}</div>
+            )}
+            <p className="text-xs text-muted-foreground mt-1">
+              {pendingInvoices} facturas pendientes
+            </p>
+          </CardContent>
+        </Card>
+      </div>
 
-    const handleUpdateClient = async () => {
-        if (clients.length === 0) return;
-        try {
-            const result = await updateClient(clients[0].id, {
-                name: `Cliente Actualizado ${Math.floor(Math.random() * 1000)}`
-            });
-            handleGetClients();
-        } catch (error) {
-            console.error("Error al actualizar cliente:", error);
-        }
-    };
+      {/* Progreso de cobros */}
+      <Card className="mb-8">
+        <CardHeader>
+          <CardTitle>Tasa de cobro</CardTitle>
+          <CardDescription>
+            Porcentaje de facturación cobrada sobre el total facturado
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {isLoading ? (
+            <Skeleton className="h-4 w-full mb-2" />
+          ) : (
+            <>
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-sm font-medium">Progreso</span>
+                <span className="text-sm font-medium">{collectionRate}%</span>
+              </div>
+              <Progress value={collectionRate} className="h-2" />
+            </>
+          )}
+          
+          <div className="grid grid-cols-2 gap-4 mt-6">
+            <div className="flex flex-col">
+              <span className="text-sm text-muted-foreground">Total facturado</span>
+              {isLoading ? (
+                <Skeleton className="h-6 w-28 mt-1" />
+              ) : (
+                <span className="text-lg font-bold">{formatCurrency(totalInvoiceAmount)}</span>
+              )}
+            </div>
+            <div className="flex flex-col">
+              <span className="text-sm text-muted-foreground">Total cobrado</span>
+              {isLoading ? (
+                <Skeleton className="h-6 w-28 mt-1" />
+              ) : (
+                <span className="text-lg font-bold">{formatCurrency(totalRevenue)}</span>
+              )}
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
-    const handleDeleteClient = async () => {
-        if (clients.length === 0) return;
-        try {
-            await deleteClient(clients[0].id);
-            handleGetClients();
-        } catch (error) {
-            console.error("Error al eliminar cliente:", error);
-        }
-    };
-
-    // Manejadores para Payments
-    const handleGetPayments = async () => {
-        try {
-            const result = await getPayments(samplePayment.invoice_id);
-            setPayments(result);
-        } catch (error) {
-            console.error("Error al obtener pagos:", error);
-        }
-    };
-
-    const handleCreatePayment = async () => {
-        try {
-            const result = await addPayment(samplePayment);
-            handleGetPayments();
-        } catch (error) {
-            console.error("Error al crear pago:", error);
-        }
-    };
-
-    // Manejadores para VerifactuLogs
-    const handleGetLogs = async () => {
-        try {
-            const result = await getVerifactuLogs();
-            setLogs(result);
-        } catch (error) {
-            console.error("Error al obtener logs:", error);
-        }
-    };
-
-    const handleCreateLog = async () => {
-        try {
-            const result = await addVerifactuLog(sampleLog);
-            handleGetLogs();
-        } catch (error) {
-            console.error("Error al crear log:", error);
-        }
-    };
-
-    // Manejadores adicionales para Users
-    const handleGetUsers = async () => {
-        try {
-            const result = await getUsers();
-            setUsers(result);
-        } catch (error) {
-            console.error("Error al obtener usuarios:", error);
-        }
-    };
-
-    const handleGetUserById = async () => {
-        if (users.length === 0) return;
-        try {
-            const result = await getUserById(users[0].id);
-            console.log("Usuario específico:", result);
-        } catch (error) {
-            console.error("Error al obtener usuario específico:", error);
-        }
-    };
-
-    const handleGetCurrentUser = async () => {
-        try {
-            const result = await getCurrentUser();
-            setCurrentUser(result);
-        } catch (error) {
-            console.error("Error al obtener usuario actual:", error);
-        }
-    };
-
-    // Manejadores adicionales para Companies
-    const handleGetCompanyById = async () => {
-        if (companies.length === 0) return;
-        try {
-            const result = await getCompanyById(companies[0].id);
-            console.log("Empresa específica:", result);
-        } catch (error) {
-            console.error("Error al obtener empresa específica:", error);
-        }
-    };
-
-    // Manejadores adicionales para Clients
-    const handleGetClientById = async () => {
-        if (clients.length === 0) return;
-        try {
-            const result = await getClientById(clients[0].id);
-            console.log("Cliente específico:", result);
-        } catch (error) {
-            console.error("Error al obtener cliente específico:", error);
-        }
-    };
-
-    // Manejadores adicionales para Payments
-    const handleGetPaymentById = async () => {
-        if (payments.length === 0) return;
-        try {
-            const result = await getPaymentById(payments[0].id);
-            console.log("Pago específico:", result);
-        } catch (error) {
-            console.error("Error al obtener pago específico:", error);
-        }
-    };
-
-    return (
-        <div className="p-8">
-            <h1 className="text-2xl font-bold mb-4">Dashboard</h1>
-            {user && <p className="mb-4">Bienvenido, {user.email}</p>}
-            
-            {/* Users Section */}
-            <div className="mb-8">
-                <h2 className="text-xl font-semibold mb-2">Usuarios</h2>
-                <div className="space-x-4 mb-4">
-                    <button onClick={handleGetUsers} className="bg-blue-500 text-white px-4 py-2 rounded">
-                        Listar Usuarios
-                    </button>
-                    <button onClick={handleGetUserById} className="bg-blue-500 text-white px-4 py-2 rounded">
-                        Obtener Usuario por ID
-                    </button>
-                    <button onClick={handleGetCurrentUser} className="bg-blue-500 text-white px-4 py-2 rounded">
-                        Obtener Usuario Actual
-                    </button>
-                </div>
-                <pre className="bg-gray-100 p-4 rounded">
-                    {JSON.stringify(users, null, 2)}
-                </pre>
-                {currentUser && (
-                    <div className="mt-4">
-                        <h3 className="font-semibold">Usuario Actual:</h3>
-                        <pre className="bg-gray-100 p-4 rounded">
-                            {JSON.stringify(currentUser, null, 2)}
-                        </pre>
+      <div className="grid gap-6 md:grid-cols-2 mb-8">
+        {/* Facturas recientes */}
+        <Card className="col-span-1">
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <CardTitle>Facturas recientes</CardTitle>
+              <Link href="/pages/dashboard/invoices">
+                <Button variant="ghost" size="sm" className="gap-1">
+                  Ver todas <ChevronRight className="h-4 w-4" />
+                </Button>
+              </Link>
+            </div>
+          </CardHeader>
+          <CardContent>
+            {isLoading ? (
+              <div className="space-y-4">
+                {[...Array(3)].map((_, i) => (
+                  <div key={i} className="flex items-center gap-4">
+                    <Skeleton className="h-12 w-12 rounded-full" />
+                    <div className="space-y-2">
+                      <Skeleton className="h-4 w-40" />
+                      <Skeleton className="h-4 w-24" />
                     </div>
-                )}
-            </div>
+                    <div className="ml-auto">
+                      <Skeleton className="h-8 w-20" />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : recentInvoices.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-8 text-center text-muted-foreground">
+                <FileText className="h-12 w-12 mb-2 opacity-20" />
+                <p>No hay facturas recientes</p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {recentInvoices.map((invoice) => {
+                  const client = clients.find(c => c.id === invoice.client_id);
+                  return (
+                    <div key={invoice.id} className="flex items-center justify-between">
+                      <div className="flex items-center gap-4">
+                        <div className={`h-10 w-10 rounded-full flex items-center justify-center 
+                          ${invoice.status === 'draft' ? 'bg-amber-100' : 
+                            invoice.status === 'final' ? 'bg-green-100' : 'bg-blue-100'}`}>
+                          {invoice.status === 'draft' ? 
+                            <Clock className="h-5 w-5 text-amber-600" /> : 
+                            invoice.status === 'final' ? 
+                            <CheckCircle className="h-5 w-5 text-green-600" /> : 
+                            <Calendar className="h-5 w-5 text-blue-600" />}
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium">{invoice.invoice_number}</p>
+                          <p className="text-xs text-muted-foreground">{client?.name || 'Cliente desconocido'}</p>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-sm font-medium">{formatCurrency(invoice.total_amount)}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {new Date(invoice.invoice_date).toLocaleDateString()}
+                        </p>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </CardContent>
+          <CardFooter className="border-t px-6 py-4">
+            <Link href="/pages/dashboard/invoices" className="w-full">
+              <Button variant="outline" className="w-full">
+                <FileText className="mr-2 h-4 w-4" />
+                Ir a facturas
+              </Button>
+            </Link>
+          </CardFooter>
+        </Card>
 
-            {/* Companies Section */}
-            <div className="mb-8">
-                <h2 className="text-xl font-semibold mb-2">Empresas</h2>
-                <div className="space-x-4 mb-4">
-                    <button onClick={handleGetCompanies} className="bg-blue-500 text-white px-4 py-2 rounded">
-                        Listar Empresas
-                    </button>
-                    <button onClick={handleGetCompanyById} className="bg-blue-500 text-white px-4 py-2 rounded">
-                        Obtener Empresa por ID
-                    </button>
-                    <button onClick={handleCreateCompany} className="bg-green-500 text-white px-4 py-2 rounded">
-                        Crear Empresa
-                    </button>
-                    <button onClick={handleUpdateCompany} className="bg-yellow-500 text-white px-4 py-2 rounded">
-                        Actualizar Primera Empresa
-                    </button>
-                    <button onClick={handleDeleteCompany} className="bg-red-500 text-white px-4 py-2 rounded">
-                        Eliminar Primera Empresa
-                    </button>
-                </div>
-                <pre className="bg-gray-100 p-4 rounded">
-                    {JSON.stringify(companies, null, 2)}
-                </pre>
+        {/* Pagos recientes */}
+        <Card className="col-span-1">
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <CardTitle>Cobros recientes</CardTitle>
+              <Link href="/pages/dashboard/payments">
+                <Button variant="ghost" size="sm" className="gap-1">
+                  Ver todos <ChevronRight className="h-4 w-4" />
+                </Button>
+              </Link>
             </div>
+          </CardHeader>
+          <CardContent>
+            {isLoading ? (
+              <div className="space-y-4">
+                {[...Array(3)].map((_, i) => (
+                  <div key={i} className="flex items-center gap-4">
+                    <Skeleton className="h-12 w-12 rounded-full" />
+                    <div className="space-y-2">
+                      <Skeleton className="h-4 w-40" />
+                      <Skeleton className="h-4 w-24" />
+                    </div>
+                    <div className="ml-auto">
+                      <Skeleton className="h-8 w-20" />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : recentPayments.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-8 text-center text-muted-foreground">
+                <CreditCard className="h-12 w-12 mb-2 opacity-20" />
+                <p>No hay cobros recientes</p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {recentPayments.map((payment) => {
+                  const invoice = invoices.find(i => i.id === payment.invoice_id);
+                  return (
+                    <div key={payment.id} className="flex items-center justify-between">
+                      <div className="flex items-center gap-4">
+                        <div className="h-10 w-10 rounded-full bg-green-100 flex items-center justify-center">
+                          <CreditCard className="h-5 w-5 text-green-600" />
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium">
+                            {invoice ? invoice.invoice_number : `Pago #${payment.id.slice(0, 8)}`}
+                          </p>
+                          <p className="text-xs text-muted-foreground">{payment.payment_method}</p>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-sm font-medium">{formatCurrency(payment.amount)}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {new Date(payment.created_at).toLocaleDateString()}
+                        </p>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </CardContent>
+          <CardFooter className="border-t px-6 py-4">
+            <Link href="/pages/dashboard/payments" className="w-full">
+              <Button variant="outline" className="w-full">
+                <CreditCard className="mr-2 h-4 w-4" />
+                Gestionar pagos
+              </Button>
+            </Link>
+          </CardFooter>
+        </Card>
+      </div>
 
-            {/* Clients Section */}
-            <div className="mb-8">
-                <h2 className="text-xl font-semibold mb-2">Clientes</h2>
-                <div className="space-x-4 mb-4">
-                    <button onClick={handleGetClients} className="bg-blue-500 text-white px-4 py-2 rounded">
-                        Listar Clientes
-                    </button>
-                    <button onClick={handleGetClientById} className="bg-blue-500 text-white px-4 py-2 rounded">
-                        Obtener Cliente por ID
-                    </button>
-                    <button onClick={handleCreateClient} className="bg-green-500 text-white px-4 py-2 rounded">
-                        Crear Cliente
-                    </button>
-                    <button onClick={handleUpdateClient} className="bg-yellow-500 text-white px-4 py-2 rounded">
-                        Actualizar Primer Cliente
-                    </button>
-                    <button onClick={handleDeleteClient} className="bg-red-500 text-white px-4 py-2 rounded">
-                        Eliminar Primer Cliente
-                    </button>
-                </div>
-                <pre className="bg-gray-100 p-4 rounded">
-                    {JSON.stringify(clients, null, 2)}
-                </pre>
-            </div>
-
-            {/* Payments Section */}
-            <div className="mb-8">
-                <h2 className="text-xl font-semibold mb-2">Pagos</h2>
-                <div className="space-x-4 mb-4">
-                    <button onClick={handleGetPayments} className="bg-blue-500 text-white px-4 py-2 rounded">
-                        Listar Pagos
-                    </button>
-                    <button onClick={handleGetPaymentById} className="bg-blue-500 text-white px-4 py-2 rounded">
-                        Obtener Pago por ID
-                    </button>
-                    <button onClick={handleCreatePayment} className="bg-green-500 text-white px-4 py-2 rounded">
-                        Crear Pago
-                    </button>
-                </div>
-                <pre className="bg-gray-100 p-4 rounded">
-                    {JSON.stringify(payments, null, 2)}
-                </pre>
-            </div>
-
-            {/* VerifactuLogs Section */}
-            <div className="mb-8">
-                <h2 className="text-xl font-semibold mb-2">Logs de Verifactu</h2>
-                <div className="space-x-4 mb-4">
-                    <button onClick={handleGetLogs} className="bg-blue-500 text-white px-4 py-2 rounded">
-                        Listar Logs
-                    </button>
-                    <button onClick={handleCreateLog} className="bg-green-500 text-white px-4 py-2 rounded">
-                        Crear Log
-                    </button>
-                </div>
-                <pre className="bg-gray-100 p-4 rounded">
-                    {JSON.stringify(logs, null, 2)}
-                </pre>
-            </div>
-        </div>
-    );
+      {/* Accesos rápidos */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Accesos rápidos</CardTitle>
+          <CardDescription>
+            Gestiona rápidamente los aspectos clave de tu negocio
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+            <Link href="/pages/dashboard/clients">
+              <Card className="cursor-pointer hover:bg-accent/10 transition-colors">
+                <CardContent className="p-4 flex flex-col items-center text-center">
+                  <Users className="h-6 w-6 mb-3 text-indigo-500" />
+                  <h3 className="font-medium">Clientes</h3>
+                  <p className="text-sm text-muted-foreground">
+                    Gestionar {clients.length} clientes
+                  </p>
+                </CardContent>
+              </Card>
+            </Link>
+            
+            <Link href="/pages/dashboard/companies">
+              <Card className="cursor-pointer hover:bg-accent/10 transition-colors">
+                <CardContent className="p-4 flex flex-col items-center text-center">
+                  <Building className="h-6 w-6 mb-3 text-emerald-500" />
+                  <h3 className="font-medium">Empresas</h3>
+                  <p className="text-sm text-muted-foreground">
+                    Gestionar {companies.length} empresas
+                  </p>
+                </CardContent>
+              </Card>
+            </Link>
+            
+            <Link href="/pages/dashboard/invoices">
+              <Card className="cursor-pointer hover:bg-accent/10 transition-colors">
+                <CardContent className="p-4 flex flex-col items-center text-center">
+                  <FileText className="h-6 w-6 mb-3 text-blue-500" />
+                  <h3 className="font-medium">Facturas</h3>
+                  <p className="text-sm text-muted-foreground">
+                    Crear y gestionar facturas
+                  </p>
+                </CardContent>
+              </Card>
+            </Link>
+            
+            <Link href="/pages/dashboard/invoice-series">
+              <Card className="cursor-pointer hover:bg-accent/10 transition-colors">
+                <CardContent className="p-4 flex flex-col items-center text-center">
+                  <BarChart2 className="h-6 w-6 mb-3 text-amber-500" />
+                  <h3 className="font-medium">Series</h3>
+                  <p className="text-sm text-muted-foreground">
+                    Configurar series de facturación
+                  </p>
+                </CardContent>
+              </Card>
+            </Link>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
 }

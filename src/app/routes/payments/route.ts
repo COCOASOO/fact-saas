@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/supabaseClient"
 
 export interface Payment {
+    created_at: string | number | Date
     id: string
     invoice_id: string
     payment_date: string
@@ -28,11 +29,11 @@ async function getCurrentUserId() {
     return user.id
 }
 
-export async function getPayments(invoiceId: string) {
+export async function getPayments(invoiceId?: string) {
     try {
         const userId = await getCurrentUserId()
         
-        const { data: payments, error } = await supabase
+        let query = supabase
             .from('payments')
             .select(`
                 *,
@@ -42,7 +43,13 @@ export async function getPayments(invoiceId: string) {
                 )
             `)
             .eq('invoices.user_id', userId)
-            .eq('invoice_id', invoiceId)
+        
+        // Si se proporciona un ID de factura, filtrar por esa factura
+        if (invoiceId) {
+            query = query.eq('invoice_id', invoiceId)
+        }
+        
+        const { data: payments, error } = await query
 
         if (error) {
             throw error
