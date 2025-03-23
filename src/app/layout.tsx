@@ -4,6 +4,7 @@ import { Inter } from "next/font/google";
 import "./globals.css";
 import Footer from "@/components/Footer";
 import { AuthProvider } from "./contexts/authContext";
+import { LoadingIndicator } from "@/components/loading-indicator";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -21,6 +22,7 @@ export default function RootLayout({
   return (
     <html lang="es">
       <body className={inter.className}>
+        <LoadingIndicator />
         <AuthProvider>
           <div className="relative flex min-h-screen flex-col">
             <main className="flex-1">{children}</main>
