@@ -6,3 +6,6 @@ Saas facturación
 - Crear facturas
 - Crear series
 - Previsualizador de facturas
+-
+
+Se ha pausado el proyecto por enfermedad 
