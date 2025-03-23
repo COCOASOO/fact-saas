@@ -257,41 +257,10 @@ export const InvoicePopupManager = forwardRef<
             toast.loading("Generando PDF...");
             
             try {
-              // Obtener usuario actual
-              const supabase = createClient();
-              const { data: { user } } = await supabase.auth.getUser();
-              
-              if (!user) {
-                throw new Error("Usuario no autenticado");
-              }
-              
-              console.log("Usuario autenticado:", user.id);
-              
-              // Generar PDF como blob
-              const options = {
-                margin: 10,
-                filename: `${savedInvoice.invoice_number}.pdf`,
-                image: { type: 'jpeg', quality: 0.98 },
-                html2canvas: { 
-                  scale: 2,
-                  useCORS: true,
-                  backgroundColor: 'white',
-                  logging: true
-                },
-                jsPDF: { 
-                  unit: 'mm', 
-                  format: 'a4', 
-                  orientation: 'portrait'
-                }
-              };
-              
-              console.log("Generando PDF con opciones:", options);
-              
-              // Generar PDF directamente
-              const pdfBlob = await html2pdf()
-                .from(invoiceElement)
-                .set(options)
-                .outputPdf('blob');
+              console.log("Utilizando PDFGenerator para generar el PDF");
+              const pdfBlob = await PDFGenerator.generatePDF(invoiceElement as HTMLElement, {
+                filename: `${savedInvoice.invoice_number}.pdf`
+              });
               
               console.log("PDF generado correctamente, tamaño:", pdfBlob.size);
               
@@ -303,7 +272,7 @@ export const InvoicePopupManager = forwardRef<
               
               // Importación dinámica para asegurar que uploadPDF está accesible
               const { uploadPDF } = await import('@/lib/supabase/storageService');
-              const pdfUrl = await uploadPDF(pdfBlob, fileName, user.id);
+              const pdfUrl = await uploadPDF(pdfBlob, fileName, savedInvoice.user_id);
               
               console.log("PDF subido exitosamente, URL:", pdfUrl);
               
