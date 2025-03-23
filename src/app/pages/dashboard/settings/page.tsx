@@ -14,11 +14,9 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
-import { Separator } from "@/components/ui/separator";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { BellRing, User as UserIcon, Palette, CreditCard, Shield, Mail, Languages, FileText, Upload, AlertCircle } from "lucide-react";
+import { User as UserIcon, Palette, Shield, AlertCircle } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 
 export default function Settings() {
@@ -31,23 +29,6 @@ export default function Settings() {
     name: "",
     email: "",
     phone: ""
-  });
-
-  const [notificationSettings, setNotificationSettings] = useState({
-    invoiceCreated: true,
-    paymentReceived: true,
-    invoiceDue: true,
-    weeklyReport: false,
-    emailNotifications: true,
-    browserNotifications: false
-  });
-
-  const [invoiceSettings, setInvoiceSettings] = useState({
-    defaultDueDate: 30,
-    defaultCurrency: "EUR",
-    defaultNotes: "Gracias por su confianza.",
-    invoiceNumberPrefix: "FACT-",
-    defaultTaxRate: 21
   });
 
   // Estados para cambio de contraseña
@@ -91,19 +72,6 @@ export default function Settings() {
   const handleUserChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setUserSettings(prev => ({ ...prev, [name]: value }));
-  };
-
-  const handleNotificationChange = (key: string, value: boolean) => {
-    setNotificationSettings(prev => ({ ...prev, [key]: value }));
-  };
-
-  const handleInvoiceChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    const { name, value } = e.target;
-    setInvoiceSettings(prev => ({ ...prev, [name]: value }));
-  };
-
-  const handleSelectChange = (name: string, value: string) => {
-    setInvoiceSettings(prev => ({ ...prev, [name]: value }));
   };
 
   const handlePasswordChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -188,18 +156,7 @@ export default function Settings() {
     }
   };
 
-  // Guardar cambios
-  const saveChanges = (section: string) => {
-    setIsLoading(true);
-    
-    // Simulación de una llamada a API para guardar cambios
-    setTimeout(() => {
-      setIsLoading(false);
-      toast.success(`Configuración de ${getSectionName(section)} guardada correctamente`);
-    }, 800);
-  };
-
-  // Guardar cambios de apariencia - Ahora realmente funcionan
+  // Guardar cambios de apariencia
   const saveAppearanceChanges = () => {
     setIsLoading(true);
     
@@ -214,9 +171,7 @@ export default function Settings() {
   const getSectionName = (section: string): string => {
     switch (section) {
       case "profile": return "perfil";
-      case "notifications": return "notificaciones";
       case "appearance": return "apariencia";
-      case "invoices": return "facturas";
       default: return section;
     }
   };
@@ -238,22 +193,14 @@ export default function Settings() {
         onValueChange={setCurrentTab}
         className="w-full"
       >
-        <TabsList className="grid grid-cols-4 mb-8">
+        <TabsList className="grid grid-cols-2 mb-8">
           <TabsTrigger value="profile" className="flex items-center gap-2">
             <UserIcon className="h-4 w-4" />
             <span className="hidden sm:inline">Perfil</span>
           </TabsTrigger>
-          <TabsTrigger value="notifications" className="flex items-center gap-2">
-            <BellRing className="h-4 w-4" />
-            <span className="hidden sm:inline">Notificaciones</span>
-          </TabsTrigger>
           <TabsTrigger value="appearance" className="flex items-center gap-2">
             <Palette className="h-4 w-4" />
             <span className="hidden sm:inline">Apariencia</span>
-          </TabsTrigger>
-          <TabsTrigger value="invoices" className="flex items-center gap-2">
-            <FileText className="h-4 w-4" />
-            <span className="hidden sm:inline">Facturas</span>
           </TabsTrigger>
         </TabsList>
 
@@ -276,9 +223,9 @@ export default function Settings() {
                 </div>
               ) : (
                 <>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="grid gap-6">
                     <div className="space-y-2">
-                      <Label htmlFor="name">Nombre completo</Label>
+                      <Label htmlFor="name">Nombre</Label>
                       <Input 
                         id="name" 
                         name="name" 
@@ -288,22 +235,18 @@ export default function Settings() {
                     </div>
                     
                     <div className="space-y-2">
-                      <Label htmlFor="email">Correo electrónico</Label>
+                      <Label htmlFor="email">Email</Label>
                       <Input 
                         id="email" 
                         name="email" 
-                        type="email" 
                         value={userSettings.email} 
-                        disabled
-                        title="El correo electrónico no se puede modificar"
+                        disabled 
                       />
-                      <p className="text-xs text-muted-foreground">
-                        El correo electrónico no se puede modificar
+                      <p className="text-sm text-muted-foreground">
+                        El email no se puede cambiar directamente.
                       </p>
                     </div>
-                  </div>
-                  
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    
                     <div className="space-y-2">
                       <Label htmlFor="phone">Teléfono</Label>
                       <Input 
@@ -414,122 +357,11 @@ export default function Settings() {
           </Card>
         </TabsContent>
 
-        {/* Contenido de la pestaña Notificaciones */}
-        <TabsContent value="notifications">
-          <Card>
-            <CardHeader>
-              <CardTitle>Preferencias de Notificaciones</CardTitle>
-              <CardDescription>
-                Configura qué notificaciones quieres recibir y cómo
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="space-y-4">
-                <h3 className="text-lg font-medium">Tipos de notificaciones</h3>
-                
-                <div className="flex items-center justify-between">
-                  <div className="space-y-0.5">
-                    <Label htmlFor="invoice-created">Factura creada</Label>
-                    <p className="text-sm text-muted-foreground">
-                      Notificación cuando se crea una nueva factura
-                    </p>
-                  </div>
-                  <Switch 
-                    id="invoice-created"
-                    checked={notificationSettings.invoiceCreated}
-                    onCheckedChange={(checked) => handleNotificationChange('invoiceCreated', checked)}
-                  />
-                </div>
-                
-                <div className="flex items-center justify-between">
-                  <div className="space-y-0.5">
-                    <Label htmlFor="payment-received">Pago recibido</Label>
-                    <p className="text-sm text-muted-foreground">
-                      Notificación cuando se recibe un pago
-                    </p>
-                  </div>
-                  <Switch 
-                    id="payment-received"
-                    checked={notificationSettings.paymentReceived}
-                    onCheckedChange={(checked) => handleNotificationChange('paymentReceived', checked)}
-                  />
-                </div>
-                
-                <div className="flex items-center justify-between">
-                  <div className="space-y-0.5">
-                    <Label htmlFor="invoice-due">Factura vencida</Label>
-                    <p className="text-sm text-muted-foreground">
-                      Notificación cuando una factura está por vencer
-                    </p>
-                  </div>
-                  <Switch 
-                    id="invoice-due"
-                    checked={notificationSettings.invoiceDue}
-                    onCheckedChange={(checked) => handleNotificationChange('invoiceDue', checked)}
-                  />
-                </div>
-                
-                <div className="flex items-center justify-between">
-                  <div className="space-y-0.5">
-                    <Label htmlFor="weekly-report">Informe semanal</Label>
-                    <p className="text-sm text-muted-foreground">
-                      Resumen semanal de facturación y cobros
-                    </p>
-                  </div>
-                  <Switch 
-                    id="weekly-report"
-                    checked={notificationSettings.weeklyReport}
-                    onCheckedChange={(checked) => handleNotificationChange('weeklyReport', checked)}
-                  />
-                </div>
-              </div>
-              
-              <Separator />
-              
-              <div className="space-y-4">
-                <h3 className="text-lg font-medium">Canales de notificación</h3>
-                
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Mail className="h-4 w-4 text-muted-foreground" />
-                    <Label htmlFor="email-notifications">Correo electrónico</Label>
-                  </div>
-                  <Switch 
-                    id="email-notifications"
-                    checked={notificationSettings.emailNotifications}
-                    onCheckedChange={(checked) => handleNotificationChange('emailNotifications', checked)}
-                  />
-                </div>
-                
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <BellRing className="h-4 w-4 text-muted-foreground" />
-                    <Label htmlFor="browser-notifications">Notificaciones del navegador</Label>
-                  </div>
-                  <Switch 
-                    id="browser-notifications"
-                    checked={notificationSettings.browserNotifications}
-                    onCheckedChange={(checked) => handleNotificationChange('browserNotifications', checked)}
-                  />
-                </div>
-              </div>
-            </CardContent>
-            <CardFooter className="flex justify-end">
-              <Button 
-                onClick={() => saveChanges("notifications")}
-                disabled={isLoading}
-              >
-                {isLoading ? "Guardando..." : "Guardar cambios"}
-              </Button>
-            </CardFooter>
-          </Card>
-        </TabsContent>
-
         {/* Contenido de la pestaña Apariencia */}
         <TabsContent value="appearance">
           <Card>
             <CardHeader>
-              <CardTitle>Personalización Visual</CardTitle>
+              <CardTitle>Apariencia</CardTitle>
               <CardDescription>
                 Personaliza la apariencia de la aplicación
               </CardDescription>
@@ -588,91 +420,6 @@ export default function Settings() {
                 disabled={isLoading}
               >
                 {isLoading ? "Aplicando..." : "Aplicar cambios"}
-              </Button>
-            </CardFooter>
-          </Card>
-        </TabsContent>
-
-        {/* Contenido de la pestaña Facturas */}
-        <TabsContent value="invoices">
-          <Card>
-            <CardHeader>
-              <CardTitle>Configuración de Facturas</CardTitle>
-              <CardDescription>
-                Establece valores predeterminados para tus facturas
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="defaultDueDate">Plazo de pago predeterminado (días)</Label>
-                  <Input 
-                    id="defaultDueDate" 
-                    name="defaultDueDate" 
-                    type="number" 
-                    value={invoiceSettings.defaultDueDate.toString()} 
-                    onChange={handleInvoiceChange} 
-                  />
-                </div>
-                
-                <div className="space-y-2">
-                  <Label htmlFor="defaultCurrency">Moneda predeterminada</Label>
-                  <Select 
-                    value={invoiceSettings.defaultCurrency}
-                    onValueChange={(value) => handleSelectChange('defaultCurrency', value)}
-                  >
-                    <SelectTrigger id="defaultCurrency">
-                      <SelectValue placeholder="Selecciona moneda" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="EUR">EUR - Euro</SelectItem>
-                      <SelectItem value="USD">USD - Dólar estadounidense</SelectItem>
-                      <SelectItem value="GBP">GBP - Libra esterlina</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="invoiceNumberPrefix">Prefijo número de factura</Label>
-                  <Input 
-                    id="invoiceNumberPrefix" 
-                    name="invoiceNumberPrefix" 
-                    value={invoiceSettings.invoiceNumberPrefix} 
-                    onChange={handleInvoiceChange} 
-                  />
-                </div>
-                
-                <div className="space-y-2">
-                  <Label htmlFor="defaultTaxRate">Porcentaje de IVA predeterminado</Label>
-                  <Input 
-                    id="defaultTaxRate" 
-                    name="defaultTaxRate" 
-                    type="number" 
-                    value={invoiceSettings.defaultTaxRate.toString()} 
-                    onChange={handleInvoiceChange} 
-                  />
-                </div>
-              </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="defaultNotes">Notas predeterminadas</Label>
-                <Textarea 
-                  id="defaultNotes" 
-                  name="defaultNotes" 
-                  value={invoiceSettings.defaultNotes} 
-                  onChange={handleInvoiceChange} 
-                  rows={3}
-                />
-              </div>
-            </CardContent>
-            <CardFooter className="flex justify-end">
-              <Button 
-                onClick={() => saveChanges("invoices")}
-                disabled={isLoading}
-              >
-                {isLoading ? "Guardando..." : "Guardar cambios"}
               </Button>
             </CardFooter>
           </Card>
