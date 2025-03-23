@@ -1,15 +1,17 @@
 import { createClient } from "@/lib/supabase/supabaseClient";
 import { NextRequest, NextResponse } from "next/server";
 import { AppRouterInstance } from "next/dist/shared/lib/app-router-context.shared-runtime";
+import { CreateCompanyDTO } from "../companies/route";
 
-// Función para el registro de usuarios
+// Función para el registro de usuarios con datos de empresa
 export async function signUp(
   e: React.FormEvent,
   email: string,
   password: string,
   phone: string,
   name: string,
-  router: AppRouterInstance
+  router: AppRouterInstance,
+  companyData?: CreateCompanyDTO
 ) {
   e.preventDefault();
   
@@ -32,8 +34,6 @@ export async function signUp(
     const userData = {
       email,
       password,
-      phone,
-      name,
       options: { emailRedirectTo: `${url}/routes/auth/callback` },
     };
 
@@ -52,6 +52,7 @@ export async function signUp(
     if (data?.user) {
       const { user } = data;
 
+      // 1. Guardamos los datos del usuario
       const { error: userError } = await supabase
         .from("users")
         .insert([
@@ -64,14 +65,35 @@ export async function signUp(
         ]);
       
       if (userError) {
+        console.error("Error al guardar los datos del usuario:", userError);
         alert("Error al guardar los datos del usuario");
         return;
+      }
+
+      // 2. Si hay datos de compañía, los guardamos
+      if (companyData && companyData.name && companyData.nif) {
+        const { error: companyError } = await supabase
+          .from("companies")
+          .insert([
+            {
+              ...companyData,
+              user_id: user.id,
+              country: companyData.country || "ESP"
+            },
+          ]);
+
+        if (companyError) {
+          console.error("Error al guardar los datos de la empresa:", companyError);
+          // Aunque falle la empresa, continuamos con el registro
+          alert("Se ha completado el registro, pero hubo un problema al guardar los datos de la empresa. Podrás configurarla más tarde.");
+        }
       }
 
       alert("Se ha enviado un correo de verificación a tu dirección de email.");
       router.push("/pages/auth/login");
     }
   } catch (error) {
+    console.error("Error durante el registro:", error);
     alert("Ocurrió un error durante el registro");
   }
 }
@@ -108,7 +130,7 @@ export async function signIn(
 
 // Mantenemos el endpoint POST para posibles llamadas API externas o necesidades futuras
 export async function POST(request: NextRequest) {
-    const { action, email, password, phone, name } = await request.json();
+    const { action, email, password, phone, name, companyData } = await request.json();
     const supabase = createClient();
     const url = process.env.NEXT_PUBLIC_BASE_URL;
 
@@ -118,8 +140,6 @@ export async function POST(request: NextRequest) {
                 const userData = {
                     email,
                     password,
-                    phone,
-                    name,
                     options: { emailRedirectTo: `${url}/routes/auth/callback` },
                 };
 
@@ -146,6 +166,24 @@ export async function POST(request: NextRequest) {
 
                     if (userError) {
                         return NextResponse.json({ error: "Error inserting user data" }, { status: 500 });
+                    }
+
+                    // Si hay datos de compañía, los guardamos
+                    if (companyData && companyData.name && companyData.nif) {
+                        const { error: companyError } = await supabase
+                            .from("companies")
+                            .insert([
+                                {
+                                    ...companyData,
+                                    user_id: user.id,
+                                    country: companyData.country || "ESP"
+                                },
+                            ]);
+
+                        if (companyError) {
+                            console.error("Error al guardar los datos de la empresa:", companyError);
+                            // Continuamos aunque falle la empresa
+                        }
                     }
 
                     return NextResponse.json({ 

@@ -122,10 +122,10 @@ export default function GuestNavbar() {
             </Link>
           ) : (
             <div className="flex gap-4">
-              <Link href="/auth/login">
+              <Link href="/pages/auth/login">
                 <Button variant="ghost">Iniciar Sesión</Button>
               </Link>
-              <Link href="/auth/register">
+              <Link href="/pages/auth/register">
                 <Button>Registrarse</Button>
               </Link>
             </div>
