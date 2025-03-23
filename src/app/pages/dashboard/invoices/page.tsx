@@ -125,8 +125,18 @@ export default function InvoicesPage() {
   const [selectedInvoiceForEdit, setSelectedInvoiceForEdit] = useState<Invoice | null>(null)
   const invoicePopupManagerRef = useRef<any>(null)
   const [isLoading, setIsLoading] = useState(true)
+  const [isMobileView, setIsMobileView] = useState(false)
 
-  // Load invoices and clients on component mount
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobileView(window.innerWidth < 768);
+    };
+    
+    handleResize();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
   useEffect(() => {
     const loadData = async () => {
       try {
@@ -148,10 +158,8 @@ export default function InvoicesPage() {
     loadData()
   }, [])
 
-  // Filtrar las series que tienen facturas
   const activeSeries = invoiceSeries.filter(series => series.last_invoice_number !== null)
 
-  // Filter and sort invoices
   const filteredInvoices = invoices
     .filter((invoice) => {
       const matchesSearch = invoice.invoice_number.toLowerCase().includes(searchQuery.toLowerCase())
@@ -164,7 +172,6 @@ export default function InvoicesPage() {
       return sortDirection === "asc" ? comparison : -comparison
     })
 
-  // Handle invoice creation
   const handleCreateInvoice = async (newInvoice: Omit<Invoice, 'id' | 'user_id'>) => {
     try {
       const createdInvoice = await addInvoice(newInvoice)
@@ -172,15 +179,11 @@ export default function InvoicesPage() {
       setIsCreateDialogOpen(false)
     } catch (error) {
       console.error("Error creating invoice:", error)
-      // Here you might want to show an error message to the user
     }
   }
 
-  // Handle edit button click - now directly opens the popup
   const handleEditClick = (invoice: Invoice) => {
-    // Set the invoice to edit and then open the popup directly
     setSelectedInvoiceForEdit(invoice)
-    // Use a small timeout to ensure the state is updated before we try to open the popup
     setTimeout(() => {
       if (invoicePopupManagerRef.current) {
         invoicePopupManagerRef.current.openPopup(invoice)
@@ -188,7 +191,6 @@ export default function InvoicesPage() {
     }, 0)
   }
 
-  // Handle invoice deletion confirmation
   const handleDeleteConfirmation = async (invoice: Invoice) => {
     try {
       await deleteInvoice(invoice.id)
@@ -201,7 +203,6 @@ export default function InvoicesPage() {
     }
   }
 
-  // Handle delete button click (opens dialog)
   const handleDeleteClick = (invoice: Invoice) => {
     if (invoice.status !== "draft") {
       toast.error("Solo se pueden eliminar facturas en estado borrador")
@@ -211,13 +212,11 @@ export default function InvoicesPage() {
     setIsDeleteDialogOpen(true)
   }
 
-  // Obtener el cliente para una factura
   const getClientName = (clientId: string) => {
     const client = clients.find(c => c.id === clientId)
     return client?.name || 'Cliente no disponible'
   }
 
-  // Handle finalizar invoice (this opens the dialog)
   const handleFinalizarInvoice = (invoice: Invoice) => {
     if (invoice.status !== "draft") {
       toast.error("Solo facturas en borrador pueden ser finalizadas")
@@ -227,19 +226,13 @@ export default function InvoicesPage() {
     setIsFinalizarDialogOpen(true)
   }
 
-  // Handle finalizar confirmation
   const handleFinalizarConfirmation = async () => {
     if (!invoiceToFinalize) return;
     
     try {
-      // Actualizar el estado de la factura
       await updateInvoiceStatus(invoiceToFinalize.id, "final");
-      
-      // Recargar todas las facturas para refrescar la lista
       const updatedInvoices = await getInvoices();
       setInvoices(updatedInvoices);
-      
-      // Cerrar el diálogo y mostrar mensaje de éxito
       setIsFinalizarDialogOpen(false);
       toast.success("Factura finalizada correctamente");
     } catch (error) {
@@ -248,7 +241,6 @@ export default function InvoicesPage() {
     }
   };
 
-  // Reemplazar función handleNewInvoice y isCreateDialogOpen
   const refreshInvoices = async () => {
     try {
       const invoicesData = await getInvoices();
@@ -258,12 +250,10 @@ export default function InvoicesPage() {
     }
   };
 
-  // Add this function to handle PDF download
   const handleDownloadPDF = async (invoice: Invoice) => {
     try {
       toast.loading('Descargando PDF...');
       
-      // Si la factura ya tiene URL de PDF, descargar directamente
       if (invoice.pdf_url) {
         await PDFGenerator.downloadFromURL(invoice);
         toast.dismiss();
@@ -271,7 +261,6 @@ export default function InvoicesPage() {
         return;
       }
       
-      // Si no tiene PDF, mostrar mensaje al usuario
       toast.dismiss();
       toast.error('Esta factura no tiene PDF guardado. Por favor, edite la factura para generarlo.');
     } catch (error) {
@@ -282,209 +271,374 @@ export default function InvoicesPage() {
   };
 
   return (
-    <div className="h-full flex-1 flex-col space-y-8 p-8 md:flex">
-      <div className="flex items-center justify-between space-y-2">
-        <div>
-          <h2 className="text-2xl font-bold tracking-tight">Facturas</h2>
-          <p className="text-muted-foreground">Gestiona tus facturas y su información</p>
-        </div>
-        <div className="flex items-center space-x-2">
-          <InvoicePopupManager 
-            ref={invoicePopupManagerRef}
-            onSuccess={refreshInvoices} 
-          />
-        </div>
-      </div>
-      <div className="space-y-4">
-        <div className="flex items-center gap-2 flex-wrap">
-          <div className="relative flex-1 max-w-sm">
-            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Buscar facturas..."
-              className="pl-8"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-            />
+    <>
+      {isMobileView ? (
+        <div className="space-y-4">
+          <div className="flex flex-col space-y-3">
+            <div>
+              <h2 className="text-xl font-bold tracking-tight">Facturas</h2>
+              <p className="text-muted-foreground text-sm">Gestiona tus facturas y su información</p>
+            </div>
+
+            <Button 
+              onClick={() => invoicePopupManagerRef.current?.openPopup()} 
+              className="w-full bg-black text-white hover:bg-gray-800"
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              Nueva Factura
+            </Button>
           </div>
-          
-          <Select
-            value={selectedSeries}
-            onValueChange={setSelectedSeries}
-          >
-            <SelectTrigger className="w-[180px]">
-              <SelectValue placeholder="Seleccionar serie" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Todas las series</SelectItem>
-              {activeSeries.map(series => (
-                <SelectItem key={series.id} value={series.id}>
-                  {series.serie_format}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
 
-          <Select
-            value={selectedStatus}
-            onValueChange={(value) => setSelectedStatus(value as Invoice["status"] | "all")}
-          >
-            <SelectTrigger className="w-[180px]">
-              <SelectValue placeholder="Seleccionar estado" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Todos los estados</SelectItem>
-              <SelectItem value="draft">Borrador</SelectItem>
-              <SelectItem value="submitted">Presentada</SelectItem>
-              <SelectItem value="final">Definitiva</SelectItem>
-            </SelectContent>
-          </Select>
+          <div className="space-y-2">
+            <div className="relative w-full">
+              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Buscar facturas..."
+                className="pl-8 w-full"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+            </div>
 
-          <Button
-            variant="outline"
-            size="icon"
-            onClick={() => setSortDirection(prev => prev === "asc" ? "desc" : "asc")}
-          >
-            {sortDirection === "asc" ? "↑" : "↓"}
-          </Button>
-        </div>
+            <div className="grid grid-cols-2 gap-2">
+              <Select
+                value={selectedSeries}
+                onValueChange={setSelectedSeries}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Serie" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todas las series</SelectItem>
+                  {activeSeries.map(series => (
+                    <SelectItem key={series.id} value={series.id}>
+                      {series.serie_format}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
 
-        <div className="border rounded-lg">
-          <Table>
-            <TableHeader>
-              <TableRow className="bg-muted/50">
-                <TableHead className="w-[150px]">Número</TableHead>
-                <TableHead className="w-[120px]">Fecha</TableHead>
-                <TableHead>Cliente</TableHead>
-                <TableHead className="text-right">Base</TableHead>
-                <TableHead className="text-right">IVA</TableHead>
-                <TableHead className="text-right">IRPF</TableHead>
-                <TableHead className="text-right">Total</TableHead>
-                <TableHead className="w-[100px] text-center">Estado</TableHead>
-                <TableHead className="w-[100px] text-right">Acciones</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {isLoading ? (
-                // Skeleton loader mientras se cargan los datos
-                Array.from({ length: 5 }).map((_, index) => (
-                  <TableRow key={`skeleton-${index}`}>
-                    <TableCell>
-                      <Skeleton className="h-5 w-[80px]" />
-                    </TableCell>
-                    <TableCell>
-                      <Skeleton className="h-5 w-[100px]" />
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex flex-col gap-1">
-                        <Skeleton className="h-5 w-[180px]" />
-                        <Skeleton className="h-4 w-[120px]" />
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <Skeleton className="h-5 w-[80px] ml-auto" />
-                    </TableCell>
-                    <TableCell>
-                      <Skeleton className="h-5 w-[80px] ml-auto" />
-                    </TableCell>
-                    <TableCell>
-                      <Skeleton className="h-5 w-[80px] ml-auto" />
-                    </TableCell>
-                    <TableCell>
-                      <Skeleton className="h-5 w-[80px] ml-auto" />
-                    </TableCell>
-                    <TableCell>
-                      <Skeleton className="h-6 w-[100px]" />
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex justify-end gap-1">
-                        <Skeleton className="h-8 w-8 rounded-full" />
-                        <Skeleton className="h-8 w-8 rounded-full" />
-                        <Skeleton className="h-8 w-8 rounded-full" />
-                        <Skeleton className="h-8 w-8 rounded-full" />
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))
-              ) : filteredInvoices.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={9} className="h-24 text-center">
-                    No se encontraron facturas.
-                  </TableCell>
-                </TableRow>
-              ) : (
-                filteredInvoices.map((invoice) => (
-                  <TableRow key={invoice.id}>
-                    <TableCell className="min-w-[140px]">
+              <Select
+                value={selectedStatus}
+                onValueChange={(value) => setSelectedStatus(value as Invoice["status"] | "all")}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Estado" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos</SelectItem>
+                  <SelectItem value="draft">Borrador</SelectItem>
+                  <SelectItem value="submitted">Presentada</SelectItem>
+                  <SelectItem value="final">Definitiva</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          <div className="space-y-3">
+            {isLoading ? (
+              Array.from({ length: 5 }).map((_, index) => (
+                <div key={index} className="border rounded-lg p-4 space-y-2">
+                  <div className="flex justify-between items-start">
+                    <Skeleton className="h-6 w-32" />
+                    <Skeleton className="h-6 w-20" />
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <Skeleton className="h-5 w-24" />
+                    <Skeleton className="h-5 w-20" />
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <Skeleton className="h-5 w-28" />
+                    <Skeleton className="h-5 w-20" />
+                  </div>
+                </div>
+              ))
+            ) : filteredInvoices.length === 0 ? (
+              <div className="border rounded-lg p-8 text-center text-muted-foreground">
+                No se encontraron facturas.
+              </div>
+            ) : (
+              filteredInvoices.map((invoice) => (
+                <div key={invoice.id} className="border rounded-lg p-4 space-y-3">
+                  <div className="flex justify-between items-start">
+                    <div className="font-medium">
                       {getDisplayInvoiceNumber(invoice.invoice_number)}
-                    </TableCell>
-                    <TableCell>{formatDate(invoice.invoice_date)}</TableCell>
-                    <TableCell>{getClientName(invoice.client_id)}</TableCell>
-                    <TableCell className="text-right">{formatCurrency(invoice.subtotal)}</TableCell>
-                    <TableCell className="text-right">{formatCurrency(invoice.tax_amount)}</TableCell>
-                    <TableCell className="text-right">{formatCurrency(invoice.irpf_amount)}</TableCell>
-                    <TableCell className="text-right font-medium">{formatCurrency(invoice.total_amount)}</TableCell>
-                    <TableCell className="text-center">
-                      <Badge className={`flex items-center justify-center ${getStatusColor(invoice.status)}`}>
-                        {getStatusIcon(invoice.status)}
-                        {getStatusText(invoice.status)}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex justify-end gap-2">
-                        {/* Show download button for final invoices */}
-                        {invoice.status === "final" && (
+                    </div>
+                    
+                    <div className="flex space-x-1">
+                      {invoice.status === "final" && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-8 w-8 p-0"
+                          onClick={() => handleDownloadPDF(invoice)}
+                        >
+                          <Download className="h-4 w-4" />
+                          <span className="sr-only">Descargar PDF</span>
+                        </Button>
+                      )}
+                      
+                      {invoice.status === "draft" && (
+                        <>
                           <Button
                             variant="ghost"
-                            size="icon"
-                            onClick={() => handleDownloadPDF(invoice)}
+                            size="sm"
+                            className="h-8 w-8 p-0"
+                            onClick={() => handleEditClick(invoice)}
                           >
-                            <Download className="h-4 w-4" />
-                            <span className="sr-only">Descargar PDF</span>
+                            <Pencil className="h-4 w-4" />
+                            <span className="sr-only">Editar</span>
                           </Button>
-                        )}
-                        
-                        {/* Show edit/delete/finalize buttons only for drafts */}
-                        {invoice.status === "draft" && (
-                          <>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => handleEditClick(invoice)}
-                            >
-                              <Pencil className="h-4 w-4" />
-                              <span className="sr-only">Editar</span>
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="text-red-500 hover:text-red-500"
-                              onClick={() => handleDeleteClick(invoice)}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                              <span className="sr-only">Eliminar</span>
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="text-green-500 hover:text-green-500"
-                              onClick={() => handleFinalizarInvoice(invoice)}
-                            >
-                              <Check className="h-4 w-4" />
-                              <span className="sr-only">Finalizar</span>
-                            </Button>
-                          </>
-                        )}
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-8 w-8 p-0 text-red-500"
+                            onClick={() => handleDeleteClick(invoice)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                            <span className="sr-only">Eliminar</span>
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-8 w-8 p-0 text-green-500"
+                            onClick={() => handleFinalizarInvoice(invoice)}
+                          >
+                            <Check className="h-4 w-4" />
+                            <span className="sr-only">Finalizar</span>
+                          </Button>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-center space-x-3">
+                    <div className="text-sm text-muted-foreground">
+                      {formatDate(invoice.invoice_date)}
+                    </div>
+                    <Badge className={`text-xs ${getStatusColor(invoice.status)}`}>
+                      {getStatusIcon(invoice.status)}
+                      {getStatusText(invoice.status)}
+                    </Badge>
+                  </div>
+                  
+                  <div className="flex items-center text-sm">
+                    <Building2 className="h-3.5 w-3.5 mr-1 text-muted-foreground" />
+                    {getClientName(invoice.client_id)}
+                  </div>
+                  
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-muted-foreground">Total:</span>
+                    <span className="font-medium">{formatCurrency(invoice.total_amount)}</span>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
         </div>
-      </div>
+      ) : (
+        <div className="h-full flex-1 flex-col space-y-6 p-4 sm:p-6 md:p-8">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between space-y-2 sm:space-y-0">
+            <div>
+              <h2 className="text-xl sm:text-2xl font-bold tracking-tight">Facturas</h2>
+              <p className="text-muted-foreground text-sm">Gestiona tus facturas y su información</p>
+            </div>
+            <div className="flex items-center mt-2 sm:mt-0">
+              <InvoicePopupManager 
+                ref={invoicePopupManagerRef}
+                onSuccess={refreshInvoices} 
+              />
+            </div>
+          </div>
+          
+          <div className="space-y-4">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 flex-wrap">
+              <div className="relative flex-1 w-full max-w-full sm:max-w-sm">
+                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Buscar facturas..."
+                  className="pl-8 w-full"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                />
+              </div>
+              
+              <div className="flex flex-wrap gap-2 w-full sm:w-auto">
+                <Select
+                  value={selectedSeries}
+                  onValueChange={setSelectedSeries}
+                >
+                  <SelectTrigger className="w-full sm:w-[180px]">
+                    <SelectValue placeholder="Seleccionar serie" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todas las series</SelectItem>
+                    {activeSeries.map(series => (
+                      <SelectItem key={series.id} value={series.id}>
+                        {series.serie_format}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
 
-      {/* Delete confirmation dialog */}
+                <Select
+                  value={selectedStatus}
+                  onValueChange={(value) => setSelectedStatus(value as Invoice["status"] | "all")}
+                >
+                  <SelectTrigger className="w-full sm:w-[180px]">
+                    <SelectValue placeholder="Seleccionar estado" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todos los estados</SelectItem>
+                    <SelectItem value="draft">Borrador</SelectItem>
+                    <SelectItem value="submitted">Presentada</SelectItem>
+                    <SelectItem value="final">Definitiva</SelectItem>
+                  </SelectContent>
+                </Select>
+
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={() => setSortDirection(prev => prev === "asc" ? "desc" : "asc")}
+                  className="shrink-0"
+                >
+                  {sortDirection === "asc" ? "↑" : "↓"}
+                </Button>
+              </div>
+            </div>
+
+            <div className="border rounded-lg overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Nº Factura</TableHead>
+                    <TableHead>Fecha</TableHead>
+                    <TableHead>Cliente</TableHead>
+                    <TableHead className="text-right">Base imponible</TableHead>
+                    <TableHead className="text-right">IVA</TableHead>
+                    <TableHead className="text-right">IRPF</TableHead>
+                    <TableHead className="text-right">Total</TableHead>
+                    <TableHead className="text-center">Estado</TableHead>
+                    <TableHead className="text-right">Acciones</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {isLoading ? (
+                    Array.from({ length: 5 }).map((_, index) => (
+                      <TableRow key={`skeleton-${index}`}>
+                        <TableCell>
+                          <Skeleton className="h-6 w-[100px]" />
+                        </TableCell>
+                        <TableCell>
+                          <Skeleton className="h-5 w-[80px]" />
+                        </TableCell>
+                        <TableCell>
+                          <Skeleton className="h-5 w-[120px]" />
+                        </TableCell>
+                        <TableCell>
+                          <Skeleton className="h-5 w-[80px] ml-auto" />
+                        </TableCell>
+                        <TableCell>
+                          <Skeleton className="h-5 w-[80px] ml-auto" />
+                        </TableCell>
+                        <TableCell>
+                          <Skeleton className="h-5 w-[80px] ml-auto" />
+                        </TableCell>
+                        <TableCell>
+                          <Skeleton className="h-5 w-[80px] ml-auto" />
+                        </TableCell>
+                        <TableCell>
+                          <Skeleton className="h-6 w-[100px]" />
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex justify-end gap-1">
+                            <Skeleton className="h-8 w-8 rounded-full" />
+                            <Skeleton className="h-8 w-8 rounded-full" />
+                            <Skeleton className="h-8 w-8 rounded-full" />
+                            <Skeleton className="h-8 w-8 rounded-full" />
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  ) : filteredInvoices.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={9} className="h-24 text-center">
+                        No se encontraron facturas.
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    filteredInvoices.map((invoice) => (
+                      <TableRow key={invoice.id}>
+                        <TableCell className="min-w-[140px]">
+                          {getDisplayInvoiceNumber(invoice.invoice_number)}
+                        </TableCell>
+                        <TableCell>{formatDate(invoice.invoice_date)}</TableCell>
+                        <TableCell>{getClientName(invoice.client_id)}</TableCell>
+                        <TableCell className="text-right">{formatCurrency(invoice.subtotal)}</TableCell>
+                        <TableCell className="text-right">{formatCurrency(invoice.tax_amount)}</TableCell>
+                        <TableCell className="text-right">{formatCurrency(invoice.irpf_amount)}</TableCell>
+                        <TableCell className="text-right font-medium">{formatCurrency(invoice.total_amount)}</TableCell>
+                        <TableCell className="text-center">
+                          <Badge className={`flex items-center justify-center ${getStatusColor(invoice.status)}`}>
+                            {getStatusIcon(invoice.status)}
+                            {getStatusText(invoice.status)}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex justify-end gap-2">
+                            {invoice.status === "final" && (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => handleDownloadPDF(invoice)}
+                              >
+                                <Download className="h-4 w-4" />
+                                <span className="sr-only">Descargar PDF</span>
+                              </Button>
+                            )}
+                            
+                            {invoice.status === "draft" && (
+                              <>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={() => handleEditClick(invoice)}
+                                >
+                                  <Pencil className="h-4 w-4" />
+                                  <span className="sr-only">Editar</span>
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="text-red-500 hover:text-red-500"
+                                  onClick={() => handleDeleteClick(invoice)}
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                  <span className="sr-only">Eliminar</span>
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="text-green-500 hover:text-green-500"
+                                  onClick={() => handleFinalizarInvoice(invoice)}
+                                >
+                                  <Check className="h-4 w-4" />
+                                  <span className="sr-only">Finalizar</span>
+                                </Button>
+                              </>
+                            )}
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </div>
+          </div>
+        </div>
+      )}
+
       <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
         <DialogContent>
           <DialogHeader>
@@ -508,7 +662,6 @@ export default function InvoicesPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Add Finalizar confirmation dialog */}
       <Dialog open={isFinalizarDialogOpen} onOpenChange={setIsFinalizarDialogOpen}>
         <DialogContent>
           <DialogHeader>
@@ -532,7 +685,7 @@ export default function InvoicesPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>
+    </>
   )
 }
 

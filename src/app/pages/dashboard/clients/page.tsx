@@ -32,6 +32,7 @@ export default function ClientsPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [companies, setCompanies] = useState<Company[]>([])
+  const [isMobileView, setIsMobileView] = useState(false)
 
   const loadClients = async () => {
     try {
@@ -51,6 +52,18 @@ export default function ClientsPage() {
 
   useEffect(() => {
     loadClients()
+  }, [])
+
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobileView(window.innerWidth < 768)
+    }
+    
+    handleResize()
+    
+    window.addEventListener('resize', handleResize)
+    
+    return () => window.removeEventListener('resize', handleResize)
   }, [])
 
   // Filter clients based on search query
@@ -132,22 +145,22 @@ export default function ClientsPage() {
   }
 
   return (
-    <div className="h-full flex-1 flex-col space-y-8 p-8 md:flex">
+    <div className="h-full flex-1 flex-col space-y-6 p-4 sm:p-6 md:p-8">
       {error && (
         <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative">
           {error}
         </div>
       )}
       
-      <div className="flex items-center justify-between space-y-2">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between space-y-2 sm:space-y-0">
         <div>
-          <h2 className="text-2xl font-bold tracking-tight">Clientes</h2>
-          <p className="text-muted-foreground">Gestiona la información y detalles de tus clientes</p>
+          <h2 className="text-xl sm:text-2xl font-bold tracking-tight">Clientes</h2>
+          <p className="text-muted-foreground text-sm">Gestiona la información y detalles de tus clientes</p>
         </div>
-        <div className="flex items-center space-x-2">
+        <div className="flex items-center space-x-2 mt-2 sm:mt-0">
           <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
             <DialogTrigger asChild>
-              <Button>
+              <Button className="w-full sm:w-auto">
                 <Plus className="mr-2 h-4 w-4" /> Añadir Cliente
               </Button>
             </DialogTrigger>
@@ -163,151 +176,247 @@ export default function ClientsPage() {
           </Dialog>
         </div>
       </div>
+      
       <div className="space-y-4">
-        <div className="flex items-center gap-2">
-          <div className="relative flex-1 max-w-sm">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2">
+          <div className="relative flex-1 w-full">
             <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
             <Input
               placeholder="Buscar clientes..."
-              className="pl-8"
+              className="pl-8 w-full"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
           </div>
         </div>
-        <div className="border rounded-lg">
-          <Table>
-            <TableHeader>
-              <TableRow className="bg-muted/50">
-                <TableHead className="w-[300px]">Detalles del Cliente</TableHead>
-                <TableHead className="w-[200px]">Empresa</TableHead>
-                <TableHead className="w-[200px]">Contacto</TableHead>
-                <TableHead className="hidden md:table-cell">Ubicación</TableHead>
-                <TableHead className="w-[100px] text-center">IRPF</TableHead>
-                <TableHead className="w-[100px] text-right">Acciones</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {isLoading ? (
-                // Skeleton loader para la tabla
-                Array.from({ length: 5 }).map((_, index) => (
-                  <TableRow key={`skeleton-${index}`}>
-                    <TableCell>
-                      <div className="flex flex-col gap-1">
-                        <Skeleton className="h-5 w-[180px]" />
-                        <Skeleton className="h-4 w-[120px]" />
+        
+        {isMobileView ? (
+          <div className="space-y-4">
+            {isLoading ? (
+              Array.from({ length: 3 }).map((_, index) => (
+                <div key={`skeleton-card-${index}`} className="border rounded-lg p-4 space-y-3">
+                  <div className="flex justify-between">
+                    <Skeleton className="h-6 w-[180px]" />
+                    <div className="flex space-x-2">
+                      <Skeleton className="h-8 w-8 rounded-full" />
+                      <Skeleton className="h-8 w-8 rounded-full" />
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <div className="flex justify-between">
+                      <Skeleton className="h-4 w-[120px]" />
+                      <Skeleton className="h-6 w-12" />
+                    </div>
+                    <Skeleton className="h-4 w-full" />
+                    <Skeleton className="h-4 w-[200px]" />
+                  </div>
+                </div>
+              ))
+            ) : filteredClients.length === 0 ? (
+              <div className="border rounded-lg p-6 text-center">
+                No se encontraron clientes.
+              </div>
+            ) : (
+              filteredClients.map((client) => {
+                const company = companies.find(company => company.id === client.company_id);
+                return (
+                  <div key={client.id} className="border rounded-lg p-4 space-y-4">
+                    <div className="flex justify-between items-start">
+                      <div className="mr-2 overflow-hidden">
+                        <h3 className="font-medium text-lg truncate">{client.name}</h3>
+                        <div className="text-sm text-muted-foreground flex items-center gap-2">
+                          <Building2 className="h-3 w-3 flex-shrink-0" />
+                          <span className="truncate">{client.nif}</span>
+                        </div>
                       </div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex flex-col gap-1">
-                        <Skeleton className="h-5 w-[150px]" />
-                        <Skeleton className="h-4 w-[100px]" />
+                      <div className="flex gap-2 flex-shrink-0">
+                        <Button variant="ghost" size="icon" onClick={() => openEditDialog(client)}>
+                          <Pencil className="h-4 w-4" />
+                          <span className="sr-only">Editar</span>
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="text-red-500 hover:text-red-500"
+                          onClick={() => openDeleteDialog(client)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                          <span className="sr-only">Eliminar</span>
+                        </Button>
                       </div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex flex-col gap-1">
-                        <Skeleton className="h-4 w-[180px]" />
-                        <Skeleton className="h-4 w-[120px]" />
+                    </div>
+                    
+                    <div className="space-y-3">
+                      <div className="flex justify-between items-start">
+                        <div className="space-y-1 max-w-[60%]">
+                          <div className="text-sm font-medium">Empresa</div>
+                          <div className="text-sm truncate">{company?.name || 'N/A'}</div>
+                        </div>
+                        <div className="text-right">
+                          <div className="text-sm font-medium">IRPF</div>
+                          <Badge variant={client.applies_irpf ? "default" : "secondary"}>
+                            {client.applies_irpf ? "Sí" : "No"}
+                          </Badge>
+                        </div>
                       </div>
-                    </TableCell>
-                    <TableCell className="hidden md:table-cell">
-                      <div className="flex flex-col gap-1">
-                        <Skeleton className="h-4 w-[200px]" />
-                        <Skeleton className="h-4 w-[150px]" />
-                        <Skeleton className="h-4 w-[80px]" />
+                      
+                      <div className="space-y-1">
+                        <div className="text-sm font-medium">Contacto</div>
+                        <div className="text-sm flex items-center gap-1 break-all">
+                          <Mail className="h-3 w-3 flex-shrink-0" />
+                          {client.email || 'N/A'}
+                        </div>
+                        <div className="text-sm flex items-center gap-1">
+                          <Phone className="h-3 w-3 flex-shrink-0" />
+                          {client.phone || 'N/A'}
+                        </div>
                       </div>
-                    </TableCell>
-                    <TableCell className="text-center">
-                      <Skeleton className="h-6 w-12 mx-auto" />
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex justify-end gap-2">
-                        <Skeleton className="h-8 w-8 rounded-full" />
-                        <Skeleton className="h-8 w-8 rounded-full" />
+                      
+                      <div className="space-y-1">
+                        <div className="text-sm font-medium">Ubicación</div>
+                        <div className="text-sm">{client.city}, {client.country}</div>
                       </div>
-                    </TableCell>
-                  </TableRow>
-                ))
-              ) : filteredClients.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={6} className="h-24 text-center">
-                    No se encontraron clientes.
-                  </TableCell>
+                    </div>
+                  </div>
+                );
+              })
+            )}
+          </div>
+        ) : (
+          <div className="border rounded-lg overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow className="bg-muted/50">
+                  <TableHead className="min-w-[200px]">Detalles del Cliente</TableHead>
+                  <TableHead className="min-w-[150px]">Empresa</TableHead>
+                  <TableHead className="min-w-[150px]">Contacto</TableHead>
+                  <TableHead className="hidden md:table-cell min-w-[200px]">Ubicación</TableHead>
+                  <TableHead className="w-[80px] text-center">IRPF</TableHead>
+                  <TableHead className="w-[90px] text-right">Acciones</TableHead>
                 </TableRow>
-              ) : (
-                filteredClients.map((client) => {
-                  const company = companies.find(company => company.id === client.company_id);
-                  return (
-                    <TableRow key={client.id}>
+              </TableHeader>
+              <TableBody>
+                {isLoading ? (
+                  // Skeleton loader para la tabla
+                  Array.from({ length: 5 }).map((_, index) => (
+                    <TableRow key={`skeleton-${index}`}>
                       <TableCell>
                         <div className="flex flex-col gap-1">
-                          <div className="font-medium">{client.name}</div>
-                          <div className="text-sm text-muted-foreground flex items-center gap-2">
-                            <Building2 className="h-3 w-3" />
-                            {client.nif}
-                          </div>
+                          <Skeleton className="h-5 w-[180px]" />
+                          <Skeleton className="h-4 w-[120px]" />
                         </div>
                       </TableCell>
                       <TableCell>
                         <div className="flex flex-col gap-1">
-                          <div className="font-medium">
-                            {company?.name || 'N/A'}
-                          </div>
-                          <div className="text-sm text-muted-foreground">
-                            {company?.nif || 'N/A'}
-                          </div>
+                          <Skeleton className="h-5 w-[150px]" />
+                          <Skeleton className="h-4 w-[100px]" />
                         </div>
                       </TableCell>
                       <TableCell>
                         <div className="flex flex-col gap-1">
-                          <div className="text-sm flex items-center gap-2">
-                            <Mail className="h-3 w-3" />
-                            {client.email}
-                          </div>
-                          <div className="text-sm text-muted-foreground flex items-center gap-2">
-                            <Phone className="h-3 w-3" />
-                            {client.phone}
-                          </div>
+                          <Skeleton className="h-4 w-[180px]" />
+                          <Skeleton className="h-4 w-[120px]" />
                         </div>
                       </TableCell>
                       <TableCell className="hidden md:table-cell">
-                        <div className="flex flex-col">
-                          <span className="text-sm">{client.address}</span>
-                          <span className="text-sm text-muted-foreground">
-                            {client.city}, {client.postcode}
-                          </span>
-                          <span className="text-sm text-muted-foreground">{client.country}</span>
+                        <div className="flex flex-col gap-1">
+                          <Skeleton className="h-4 w-[200px]" />
+                          <Skeleton className="h-4 w-[150px]" />
+                          <Skeleton className="h-4 w-[80px]" />
                         </div>
                       </TableCell>
                       <TableCell className="text-center">
-                        <Badge variant={client.applies_irpf ? "default" : "secondary"}>
-                          {client.applies_irpf ? "Sí" : "No"}
-                        </Badge>
+                        <Skeleton className="h-6 w-12 mx-auto" />
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-2">
-                          <Button variant="ghost" size="icon" onClick={() => openEditDialog(client)}>
-                            <Pencil className="h-4 w-4" />
-                            <span className="sr-only">Editar</span>
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="text-red-500 hover:text-red-500"
-                            onClick={() => openDeleteDialog(client)}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                            <span className="sr-only">Eliminar</span>
-                          </Button>
+                          <Skeleton className="h-8 w-8 rounded-full" />
+                          <Skeleton className="h-8 w-8 rounded-full" />
                         </div>
                       </TableCell>
                     </TableRow>
-                  );
-                })
-              )}
-            </TableBody>
-          </Table>
-        </div>
+                  ))
+                ) : filteredClients.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={6} className="h-24 text-center">
+                      No se encontraron clientes.
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  filteredClients.map((client) => {
+                    const company = companies.find(company => company.id === client.company_id);
+                    return (
+                      <TableRow key={client.id}>
+                        <TableCell>
+                          <div className="flex flex-col gap-1">
+                            <div className="font-medium">{client.name}</div>
+                            <div className="text-sm text-muted-foreground flex items-center gap-2">
+                              <Building2 className="h-3 w-3" />
+                              {client.nif}
+                            </div>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex flex-col gap-1">
+                            <div className="font-medium">
+                              {company?.name || 'N/A'}
+                            </div>
+                            <div className="text-sm text-muted-foreground">
+                              {company?.nif || 'N/A'}
+                            </div>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex flex-col gap-1">
+                            <div className="text-sm flex items-center gap-2">
+                              <Mail className="h-3 w-3" />
+                              {client.email}
+                            </div>
+                            <div className="text-sm text-muted-foreground flex items-center gap-2">
+                              <Phone className="h-3 w-3" />
+                              {client.phone}
+                            </div>
+                          </div>
+                        </TableCell>
+                        <TableCell className="hidden md:table-cell">
+                          <div className="flex flex-col">
+                            <span className="text-sm">{client.address}</span>
+                            <span className="text-sm text-muted-foreground">
+                              {client.city}, {client.postcode}
+                            </span>
+                            <span className="text-sm text-muted-foreground">{client.country}</span>
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-center">
+                          <Badge variant={client.applies_irpf ? "default" : "secondary"}>
+                            {client.applies_irpf ? "Sí" : "No"}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex justify-end gap-2">
+                            <Button variant="ghost" size="icon" onClick={() => openEditDialog(client)}>
+                              <Pencil className="h-4 w-4" />
+                              <span className="sr-only">Editar</span>
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="text-red-500 hover:text-red-500"
+                              onClick={() => openDeleteDialog(client)}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                              <span className="sr-only">Eliminar</span>
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })
+                )}
+              </TableBody>
+            </Table>
+          </div>
+        )}
       </div>
 
       {/* Edit Client Dialog */}

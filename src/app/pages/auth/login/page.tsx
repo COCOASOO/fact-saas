@@ -35,16 +35,21 @@ export default function LoginPage() {
         </div>
       </div>
 
-      <div className="flex-1 flex items-center justify-center p-8 bg-gray-50">
-        <div className="w-full max-w-sm space-y-8">
+      <div className="flex-1 flex items-center justify-center p-4 sm:p-6 md:p-8 bg-gray-50">
+        <div className="w-full max-w-sm space-y-6">
+          <div className="lg:hidden text-center mb-6">
+            <h2 className="text-xl font-bold text-blue-700">Acme Inc</h2>
+            <p className="text-sm text-gray-500">Enterprise Solutions</p>
+          </div>
+
           <div>
             <h1 className="text-2xl font-bold text-gray-900 tracking-tight">Welcome back</h1>
             <p className="text-gray-600 mt-2">Enter your credentials to access your account</p>
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-6">
+          <form onSubmit={handleSubmit} className="space-y-5">
             {error && (
-              <div className="p-4 rounded-lg bg-red-50 border border-red-100 text-red-600 text-sm">{error}</div>
+              <div className="p-3 rounded-lg bg-red-50 border border-red-100 text-red-600 text-sm">{error}</div>
             )}
 
             <div className="space-y-4">
@@ -55,7 +60,7 @@ export default function LoginPage() {
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="w-full px-4 py-2.5 rounded-lg text-gray-900 border border-gray-300 
+                  className="w-full px-3 py-2 sm:px-4 sm:py-2.5 rounded-lg text-gray-900 border border-gray-300 
                     focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500
                     placeholder:text-gray-400 transition-all duration-200"
                   placeholder="name@example.com"
@@ -70,7 +75,7 @@ export default function LoginPage() {
                   type="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full px-4 py-2.5 rounded-lg text-gray-900 border border-gray-300 
+                  className="w-full px-3 py-2 sm:px-4 sm:py-2.5 rounded-lg text-gray-900 border border-gray-300 
                     focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500
                     placeholder:text-gray-400 transition-all duration-200"
                   required
@@ -78,7 +83,7 @@ export default function LoginPage() {
               </div>
             </div>
 
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-0">
               <div className="flex items-center">
                 <input
                   type="checkbox"
