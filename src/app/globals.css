@@ -71,8 +71,6 @@ body {
   }
 }
 
-
-
 @layer base {
   * {
     @apply border-border outline-ring/50;
@@ -80,5 +78,45 @@ body {
   body {
     @apply bg-background text-foreground;
   }
+}
+
+/* Modo compacto */
+.ui-compact .card {
+  padding: 0.75rem;
+}
+
+.ui-compact .card-header {
+  padding: 1rem 1rem 0.5rem;
+}
+
+.ui-compact .card-content {
+  padding: 0.5rem 1rem;
+}
+
+.ui-compact .card-footer {
+  padding: 0.5rem 1rem 1rem;
+}
+
+.ui-compact .space-y-6 {
+  margin-top: 0.75rem;
+}
+
+.ui-compact button, 
+.ui-compact .button {
+  padding-top: 0.375rem;
+  padding-bottom: 0.375rem;
+}
+
+.ui-compact input, 
+.ui-compact select, 
+.ui-compact textarea {
+  padding-top: 0.375rem;
+  padding-bottom: 0.375rem;
+}
+
+.ui-compact table td,
+.ui-compact table th {
+  padding-top: 0.5rem;
+  padding-bottom: 0.5rem;
 }
 
