@@ -1,33 +1,9 @@
 import { createClient } from "@/lib/supabase/supabaseClient"
-
-export interface Payment {
-    created_at: string | number | Date
-    id: string
-    invoice_id: string
-    payment_date: string
-    amount: number
-    payment_method: 'cash' | 'transfer' | 'card'
-    status: 'pending' | 'completed' | 'failed'
-}
-
-export interface CreatePaymentDTO {
-    invoice_id: string
-    amount: number
-    payment_method: 'cash' | 'transfer' | 'card'
-    status: 'pending' | 'completed' | 'failed'
-    payment_date?: string // Opcional ya que tiene valor por defecto en la BD
-}
+import { NextRequest, NextResponse } from "next/server"
+import { getCurrentUserId } from "@/app/utils/auth"
+import { Payment, CreatePaymentDTO } from "@/app/types/payment"
 
 const supabase = createClient()
-
-async function getCurrentUserId() {
-    const { data: { user } } = await supabase.auth.getUser()
-    
-    if (!user) {
-        throw new Error('No hay usuario autenticado')
-    }
-    return user.id
-}
 
 export async function getPayments(invoiceId?: string) {
     try {
@@ -123,5 +99,46 @@ export async function addPayment(payment: CreatePaymentDTO) {
         return data as Payment
     } catch (error) {
         throw error;
+    }
+}
+
+// Esta es una ruta API válida para Next.js
+export async function GET(request: NextRequest) {
+    try {
+        const userId = await getCurrentUserId();
+        const supabase = createClient();
+        
+        // Extraer parámetros de consulta si es necesario
+        const { searchParams } = new URL(request.url);
+        const invoiceId = searchParams.get('invoice_id');
+        
+        let query = supabase
+            .from('payments')
+            .select(`
+                *,
+                invoices!inner(
+                    *,
+                    clients!inner(*)
+                )
+            `)
+            .eq('invoices.user_id', userId);
+            
+        if (invoiceId) {
+            query = query.eq('invoice_id', invoiceId);
+        }
+        
+        const { data, error } = await query;
+        
+        if (error) {
+            throw error;
+        }
+        
+        if (!data) {
+            return NextResponse.json({ error: 'No data found' }, { status: 404 });
+        }
+        return NextResponse.json(data);
+    } catch (error) {
+        console.error('Error occurred:', error);
+        return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
     }
 }
