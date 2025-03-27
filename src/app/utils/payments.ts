@@ -1,12 +1,13 @@
 import { createClient } from "@/lib/supabase/supabaseClient";
 import { getCurrentUserId } from "./auth";
-import { Payment,CreatePaymentDTO } from "../types/payment";
+import { Payment, CreatePaymentDTO } from "../types/payment";
 
-// Funciones movidas desde routes/payments/route.ts
+const supabase = createClient();
+
+// Función para obtener pagos con filtro opcional por factura
 export async function getPayments(invoiceId?: string) {
     try {
         const userId = await getCurrentUserId();
-        const supabase = createClient();
         
         let query = supabase
             .from('payments')
@@ -19,7 +20,6 @@ export async function getPayments(invoiceId?: string) {
             `)
             .eq('invoices.user_id', userId);
         
-        // Si se proporciona un ID de factura, filtrar por esa factura
         if (invoiceId) {
             query = query.eq('invoice_id', invoiceId);
         }
@@ -36,10 +36,10 @@ export async function getPayments(invoiceId?: string) {
     }
 }
 
+// Función para añadir un nuevo pago
 export async function addPayment(payment: CreatePaymentDTO) {
     try {
         const userId = await getCurrentUserId();
-        const supabase = createClient();
         
         // Verificar que la factura existe y pertenece al usuario
         const { data: invoice, error: invoiceError } = await supabase
@@ -70,6 +70,69 @@ export async function addPayment(payment: CreatePaymentDTO) {
         }
 
         return data as Payment;
+    } catch (error) {
+        throw error;
+    }
+}
+
+// Función para obtener un pago específico por ID
+export async function getPaymentById(id: string) {
+    try {
+        const userId = await getCurrentUserId();
+        
+        const { data: payment, error } = await supabase
+            .from('payments')
+            .select(`
+                *,
+                invoices!inner(
+                    *,
+                    clients!inner(*)
+                )
+            `)
+            .eq('invoices.user_id', userId)
+            .eq('id', id)
+            .single();
+
+        if (error) {
+            throw error;
+        }
+
+        return payment as Payment;
+    } catch (error) {
+        throw error;
+    }
+}
+
+// Función para eliminar un pago
+export async function deletePayment(id: string) {
+    try {
+        const userId = await getCurrentUserId();
+        
+        // Verificar que el pago pertenece al usuario
+        const { data: payment, error: fetchError } = await supabase
+            .from('payments')
+            .select(`
+                *,
+                invoices!inner(*)
+            `)
+            .eq('id', id)
+            .eq('invoices.user_id', userId)
+            .single();
+            
+        if (fetchError || !payment) {
+            throw new Error('Pago no encontrado o no autorizado');
+        }
+        
+        const { error } = await supabase
+            .from('payments')
+            .delete()
+            .eq('id', id);
+
+        if (error) {
+            throw error;
+        }
+
+        return true;
     } catch (error) {
         throw error;
     }
