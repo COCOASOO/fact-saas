@@ -5,38 +5,6 @@ import { Payment, CreatePaymentDTO } from "@/app/types/payment"
 
 const supabase = createClient()
 
-export async function getPayments(invoiceId?: string) {
-    try {
-        const userId = await getCurrentUserId()
-        
-        let query = supabase
-            .from('payments')
-            .select(`
-                *,
-                invoices!inner(
-                    *,
-                    clients!inner(*)
-                )
-            `)
-            .eq('invoices.user_id', userId)
-        
-        // Si se proporciona un ID de factura, filtrar por esa factura
-        if (invoiceId) {
-            query = query.eq('invoice_id', invoiceId)
-        }
-        
-        const { data: payments, error } = await query
-
-        if (error) {
-            throw error
-        }
-        
-        return payments as Payment[]
-    } catch (error) {
-        throw error;
-    }
-}
-
 export async function getPaymentById(id: string) {
     try {
         const userId = await getCurrentUserId()
