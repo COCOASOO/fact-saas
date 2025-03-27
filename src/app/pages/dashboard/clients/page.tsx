@@ -16,10 +16,10 @@ import {
 } from "@/components/ui/dialog"
 import { Badge } from "@/components/ui/badge"
 import { ClientForm } from "@/components/forms/ClientForm"
-import { getClients, addClient, updateClient, deleteClient } from "@/app/routes/clients/route"
-import { Client, CreateClientDTO, UpdateClientDTO } from "@/app/routes/clients/route"
-import { getCompanies } from "@/app/routes/companies/route"
-import type { Company } from "@/app/routes/companies/route"
+import { getClients, addClient, updateClient, deleteClient } from "@/app/utils/clients"
+import { Client, CreateClientDTO, UpdateClientDTO } from "@/app/utils/clients"
+import { getCompanies } from "@/app/utils/companies"
+import type { Company } from "@/app/utils/companies"
 import { Skeleton } from "@/components/ui/skeleton"
 
 export default function ClientsPage() {

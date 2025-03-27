@@ -1,169 +1,68 @@
-import { createClient } from "@/lib/supabase/supabaseClient";
+import { NextRequest, NextResponse } from "next/server";
+import {
+  getCompanies,
+  getCompanyById,
+  addCompany,
+  updateCompany,
+  deleteCompany
+} from "@/app/utils/companies";
 
-export interface Company {
-  id: string;
-  name: string;
-  nif: string;
-  address?: string;
-  city?: string;
-  postcode?: string;
-  country: string;
-  email?: string;
-  phone?: string;
-  user_id: string;
-  created_at?: string;
-  updated_at?: string;
-}
-
-export interface CreateCompanyDTO {
-  name: string;
-  nif: string;
-  address?: string;
-  city?: string;
-  postcode?: string;
-  country?: string;
-  email?: string;
-  phone?: string;
-}
-
-export interface UpdateCompanyDTO extends Partial<CreateCompanyDTO> {}
-
-const supabase = createClient();
-
-// Función auxiliar para obtener el user_id actual
-async function getCurrentUserId() {
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    throw new Error("No hay usuario autenticado");
-  }
-  return user.id;
-}
-
-export async function getCompanies() {
+export async function GET(request: NextRequest) {
   try {
-    const userId = await getCurrentUserId();
+    const { searchParams } = new URL(request.url);
+    const id = searchParams.get('id');
 
-    const { data: companies, error } = await supabase
-      .from("companies")
-      .select("*")
-      .eq("user_id", userId);
-
-    if (error) throw error;
-    return companies as Company[];
-  } catch (error) {
-    throw error;
-  }
-}
-
-export async function getUserCompany() {
-  try {
-    const userId = await getCurrentUserId();
-    const { data: company, error } = await supabase
-      .from("companies")
-      .select("*")
-      .eq("user_id", userId)
-      .single();
-
-    return company as Company;
-  } catch (error) {
-    throw error;
-  }
-}
-
-export async function getCompanyById(id: string) {
-  try {
-    const userId = await getCurrentUserId();
-
-    const { data: company, error } = await supabase
-      .from("companies")
-      .select("*")
-      .eq("id", id)
-      .eq("user_id", userId)
-      .single();
-
-    if (error) {
-      throw error;
+    if (id) {
+      const company = await getCompanyById(id);
+      return NextResponse.json(company);
+    } else {
+      const companies = await getCompanies();
+      return NextResponse.json(companies);
     }
-
-    return company as Company;
   } catch (error) {
-    throw error;
+    return NextResponse.json({ error: (error as Error).message }, { status: 500 });
   }
 }
 
-export async function addCompany(company: CreateCompanyDTO) {
+export async function POST(request: NextRequest) {
   try {
-    const userId = await getCurrentUserId();
-
-    const companyData = {
-      ...company,
-      user_id: userId,
-      country: company.country || "ESP",
-    };
-
-    const { data, error } = await supabase
-      .from("companies")
-      .insert([companyData])
-      .select()
-      .single();
-
-    if (error) {
-      if (error.code === "23505") {
-        throw new Error("Ya existe una empresa con este NIF");
-      }
-      throw error;
-    }
-
-    return data as Company;
+    const data = await request.json();
+    const company = await addCompany(data);
+    return NextResponse.json(company);
   } catch (error) {
-    throw error;
+    return NextResponse.json({ error: (error as Error).message }, { status: 500 });
   }
 }
 
-export async function updateCompany(id: string, company: UpdateCompanyDTO) {
+export async function PUT(request: NextRequest) {
   try {
-    const userId = await getCurrentUserId();
-
-    const { data, error } = await supabase
-      .from("companies")
-      .update(company)
-      .eq("id", id)
-      .eq("user_id", userId)
-      .select()
-      .single();
-
-    if (error) {
-      if (error.code === "23505") {
-        throw new Error("Ya existe una empresa con este NIF");
-      }
-      throw error;
+    const { searchParams } = new URL(request.url);
+    const id = searchParams.get('id');
+    
+    if (!id) {
+      return NextResponse.json({ error: 'ID is required' }, { status: 400 });
     }
-
-    return data as Company;
+    
+    const data = await request.json();
+    const company = await updateCompany(id, data);
+    return NextResponse.json(company);
   } catch (error) {
-    throw error;
+    return NextResponse.json({ error: (error as Error).message }, { status: 500 });
   }
 }
 
-export async function deleteCompany(id: string) {
+export async function DELETE(request: NextRequest) {
   try {
-    const userId = await getCurrentUserId();
-
-    const { error } = await supabase
-      .from("companies")
-      .delete()
-      .eq("id", id)
-      .eq("user_id", userId);
-
-    if (error) {
-      throw error;
+    const { searchParams } = new URL(request.url);
+    const id = searchParams.get('id');
+    
+    if (!id) {
+      return NextResponse.json({ error: 'ID is required' }, { status: 400 });
     }
-
-    return true;
+    
+    await deleteCompany(id);
+    return NextResponse.json({ success: true });
   } catch (error) {
-    throw error;
+    return NextResponse.json({ error: (error as Error).message }, { status: 500 });
   }
 }

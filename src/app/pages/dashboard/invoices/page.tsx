@@ -20,7 +20,7 @@ import { InvoiceForm } from "@/components/forms/InvoiceForm"
 import type { Invoice } from "@/app/types/invoice"
 import { formatCurrency, formatDate } from "@/app/utils/invoice-calculations"
 import { getInvoices, updateInvoice, deleteInvoice, addInvoice, updateInvoiceStatus, getInvoiceById } from "@/app/routes/invoices/route"
-import { getClients } from "@/app/routes/clients/route"
+import { getClients } from "@/app/utils/clients"
 import { Client } from "@/app/types/client"
 import { toast } from "sonner"
 import {

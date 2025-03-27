@@ -1,7 +1,6 @@
 import { createClient } from "@/lib/supabase/supabaseClient";
 import { NextRequest, NextResponse } from "next/server";
-import { AppRouterInstance } from "next/dist/shared/lib/app-router-context.shared-runtime";
-import { CreateCompanyDTO } from "../companies/route";
+
 
 const supabase = createClient();
 
