@@ -24,7 +24,7 @@ import {
   updateInvoiceSeries,
   checkSeriesHasInvoices,
   checkDuplicateFormat,
-} from "@/app/routes/invoice_series/route";
+} from "@/app/utils/invoice_series";
 
 interface InvoiceSeriesDialogProps {
   open: boolean;

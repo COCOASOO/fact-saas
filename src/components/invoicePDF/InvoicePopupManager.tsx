@@ -10,7 +10,7 @@ import {
   addInvoice,
   updateInvoice,
   getInvoiceById,
-} from "@/app/routes/invoices/route";
+} from "@/app/utils/invoices";
 import { getClientById } from "@/app/utils/clients";
 import { getUserCompany } from "@/app/utils/companies";
 import { toast } from "sonner";
@@ -188,10 +188,9 @@ export const InvoicePopupManager = forwardRef<
       let savedInvoice;
 
       if (currentInvoice?.id) {
-        savedInvoice = await updateInvoice({
-          ...formValues,
-          id: currentInvoice.id,
-        });
+        const updateData = { ...formValues };
+        delete updateData.id; // Eliminar el id del objeto de datos
+        savedInvoice = await updateInvoice(currentInvoice.id, updateData);
         toast.success("Factura actualizada correctamente");
       } else {
         savedInvoice = await addInvoice(formValues);
@@ -234,10 +233,9 @@ export const InvoicePopupManager = forwardRef<
       try {
         if (currentInvoice?.id) {
           console.log("Actualizando factura existente:", currentInvoice.id);
-          savedInvoice = await updateInvoice({
-            ...invoiceData,
-            id: currentInvoice.id,
-          });
+          const updateData = { ...invoiceData };
+          delete updateData.id; // Eliminar el id del objeto de datos
+          savedInvoice = await updateInvoice(currentInvoice.id, updateData);
         } else {
           console.log("Creando nueva factura");
           savedInvoice = await addInvoice(invoiceData);
@@ -277,11 +275,10 @@ export const InvoicePopupManager = forwardRef<
               console.log("PDF subido exitosamente, URL:", pdfUrl);
               
               // Actualizar factura con la URL del PDF
-              console.log("Actualizando factura con URL del PDF");
-              await updateInvoice({
-                ...savedInvoice,
-                pdf_url: pdfUrl
-              });
+              if (savedInvoice && savedInvoice.id) {
+                console.log("Actualizando factura con URL del PDF");
+                await updateInvoice(savedInvoice.id, { pdf_url: pdfUrl });
+              }
               
               toast.dismiss();
               toast.success("Factura y PDF guardados correctamente");

@@ -19,7 +19,7 @@ import Link from "next/link"
 import { InvoiceForm } from "@/components/forms/InvoiceForm"
 import type { Invoice } from "@/app/types/invoice"
 import { formatCurrency, formatDate } from "@/app/utils/invoice-calculations"
-import { getInvoices, updateInvoice, deleteInvoice, addInvoice, updateInvoiceStatus, getInvoiceById } from "@/app/routes/invoices/route"
+import { getInvoices, updateInvoice, deleteInvoice, updateInvoiceStatus, getInvoiceById, createInvoice } from "@/app/utils/invoices"
 import { getClients } from "@/app/utils/clients"
 import { Client } from "@/app/types/client"
 import { toast } from "sonner"
@@ -142,11 +142,11 @@ export default function InvoicesPage() {
       try {
         setIsLoading(true)
         const [invoicesData, clientsData, seriesData] = await Promise.all([
-          getInvoices(),
+          getInvoices({}),
           getClients(),
           getInvoiceSeries()
         ])
-        setInvoices(invoicesData)
+        setInvoices(invoicesData.invoices)
         setClients(clientsData)
         setInvoiceSeries(seriesData)
       } catch (error) {
@@ -172,15 +172,7 @@ export default function InvoicesPage() {
       return sortDirection === "asc" ? comparison : -comparison
     })
 
-  const handleCreateInvoice = async (newInvoice: Omit<Invoice, 'id' | 'user_id'>) => {
-    try {
-      const createdInvoice = await addInvoice(newInvoice)
-      setInvoices([...invoices, createdInvoice])
-      setIsCreateDialogOpen(false)
-    } catch (error) {
-      console.error("Error creating invoice:", error)
-    }
-  }
+
 
   const handleEditClick = (invoice: Invoice) => {
     setSelectedInvoiceForEdit(invoice)
@@ -231,8 +223,8 @@ export default function InvoicesPage() {
     
     try {
       await updateInvoiceStatus(invoiceToFinalize.id, "final");
-      const updatedInvoices = await getInvoices();
-      setInvoices(updatedInvoices);
+      const updatedInvoices = await getInvoices({});
+      setInvoices(updatedInvoices.invoices);
       setIsFinalizarDialogOpen(false);
       toast.success("Factura finalizada correctamente");
     } catch (error) {
@@ -243,8 +235,8 @@ export default function InvoicesPage() {
 
   const refreshInvoices = async () => {
     try {
-      const invoicesData = await getInvoices();
-      setInvoices(invoicesData);
+      const invoicesData = await getInvoices({});
+      setInvoices(invoicesData.invoices);
     } catch (error) {
       console.error("Error loading invoices:", error);
     }

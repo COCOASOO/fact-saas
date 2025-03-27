@@ -2,7 +2,7 @@ import html2pdf from 'html2pdf.js';
 import { Invoice } from '@/app/types/invoice';
 import { toast } from 'sonner';
 import { uploadPDF } from '@/lib/supabase/storageService';
-import { updateInvoice } from '@/app/routes/invoices/route';
+import { updateInvoice } from '@/app/utils/invoices';
 import { createClient } from '@/lib/supabase/supabaseClient';
 
 // Clase para gestionar la generación de PDFs
@@ -108,7 +108,7 @@ export class PDFGenerator {
       };
       
       console.log('Actualizando factura con URL del PDF');
-      await updateInvoice(updatedInvoice);
+      await updateInvoice(invoice.id, updatedInvoice);
       console.log('Factura actualizada correctamente');
       
       return pdfUrl;

@@ -22,9 +22,9 @@ import {
 import { getClients, getClientById } from "@/app/utils/clients";
 import { Client } from "@/app/types/client";
 import { Company, getUserCompany } from "@/app/utils/companies";
-import { getInvoiceSeries } from '@/app/utils/invoice_series';
+import { getInvoiceSeries, getNextInvoiceNumber } from '@/app/utils/invoice_series';
 import { InvoiceSeries } from '@/app/types/invoice-series';
-import { generateInvoiceNumber } from "@/app/routes/invoices/route";
+import { generateInvoiceNumber } from "@/app/utils/invoices";
 
 interface InvoiceFormProps {
   invoice?: Invoice;

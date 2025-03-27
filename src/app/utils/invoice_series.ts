@@ -137,4 +137,37 @@ export async function updateSeriesInvoiceCount(seriesId: string): Promise<void> 
     console.error("Error updating series invoice count:", error);
     throw error;
   }
+}
+
+/**
+ * Check if a series format already exists for the current user
+ */
+export async function checkDuplicateFormat(format: string, excludeId?: string): Promise<boolean> {
+  try {
+    const userId = (await supabase.auth.getUser()).data.user?.id;
+    if (!userId) {
+      throw new Error("Usuario no autenticado");
+    }
+
+    let query = supabase
+      .from("invoice_series")
+      .select("id")
+      .eq("user_id", userId)
+      .eq("serie_format", format);
+
+    // If we're updating an existing series, exclude it from the check
+    if (excludeId) {
+      query = query.neq("id", excludeId);
+    }
+
+    const { data, error } = await query;
+
+    if (error) throw error;
+    
+    // Return true if any matching records were found (meaning it's a duplicate)
+    return (data?.length ?? 0) > 0;
+  } catch (error) {
+    console.error("Error checking duplicate format:", error);
+    throw error;
+  }
 } 

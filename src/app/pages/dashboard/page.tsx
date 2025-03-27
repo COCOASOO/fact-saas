@@ -3,8 +3,7 @@
 import { useAuth } from "@/app/contexts/authContext";
 import { getCompanies, type Company } from "@/app/utils/companies";
 import { getClients, type Client } from "@/app/utils/clients";
-import { getPayments, type Payment } from "@/app/routes/payments/route";
-import { getInvoices} from "@/app/routes/invoices/route";
+import { getInvoices} from "@/app/utils/invoices";
 import { type Invoice } from "@/app/types/invoice";
 import { useEffect, useState } from "react";
 import Link from "next/link";
@@ -38,7 +37,6 @@ export default function Dashboard() {
   const { user } = useAuth();
   const [companies, setCompanies] = useState<Company[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
-  const [payments, setPayments] = useState<Payment[]>([]);
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -46,17 +44,15 @@ export default function Dashboard() {
     const loadDashboardData = async () => {
       try {
         setIsLoading(true);
-        const [companiesData, clientsData, paymentsData, invoicesData] = await Promise.all([
+        const [companiesData, clientsData, invoicesData] = await Promise.all([
           getCompanies(),
           getClients(),
-          getPayments(),
-          getInvoices()
+          getInvoices({})
         ]);
         
         setCompanies(companiesData);
         setClients(clientsData);
-        setPayments(paymentsData);
-        setInvoices(invoicesData);
+        setInvoices(invoicesData.invoices);
       } catch (error) {
         console.error("Error al cargar datos del dashboard:", error);
       } finally {
@@ -72,24 +68,12 @@ export default function Dashboard() {
   const pendingInvoices = invoices.filter(inv => inv.status === "draft").length;
   const completedInvoices = invoices.filter(inv => inv.status === "final").length;
   
-  // Calcular ingresos totales y pendientes
-  const totalRevenue = payments.reduce((sum, payment) => sum + payment.amount, 0);
+  // Calcular monto total de facturas
   const totalInvoiceAmount = invoices.reduce((sum, invoice) => sum + invoice.total_amount, 0);
-  const pendingAmount = totalInvoiceAmount - totalRevenue;
   
-  // Porcentaje de facturación cobrada
-  const collectionRate = totalInvoiceAmount > 0 
-    ? Math.round((totalRevenue / totalInvoiceAmount) * 100) 
-    : 0;
-
   // Obtener las facturas más recientes (limitadas a 5)
   const recentInvoices = [...invoices]
     .sort((a, b) => new Date(b.invoice_date).getTime() - new Date(a.invoice_date).getTime())
-    .slice(0, 5);
-
-  // Obtener pagos recientes (limitados a 5)
-  const recentPayments = [...payments]
-    .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
     .slice(0, 5);
 
   return (
@@ -104,7 +88,7 @@ export default function Dashboard() {
       </div>
 
       {/* Tarjetas de estadísticas */}
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4 mb-8">
+      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 mb-8">
         {/* Número de facturas */}
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
@@ -145,31 +129,11 @@ export default function Dashboard() {
           </CardContent>
         </Card>
 
-        {/* Ingresos totales */}
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">
-              Ingresos totales
-            </CardTitle>
-            <TrendingUp className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            {isLoading ? (
-              <Skeleton className="h-8 w-36" />
-            ) : (
-              <div className="text-2xl font-bold">{formatCurrency(totalRevenue)}</div>
-            )}
-            <p className="text-xs text-muted-foreground mt-1">
-              {payments.length} pagos registrados
-            </p>
-          </CardContent>
-        </Card>
-
         {/* Cobros pendientes */}
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium">
-              Pendiente de cobro
+              Total facturado
             </CardTitle>
             <CircleAlert className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
@@ -177,7 +141,7 @@ export default function Dashboard() {
             {isLoading ? (
               <Skeleton className="h-8 w-36" />
             ) : (
-              <div className="text-2xl font-bold">{formatCurrency(pendingAmount)}</div>
+              <div className="text-2xl font-bold">{formatCurrency(totalInvoiceAmount)}</div>
             )}
             <p className="text-xs text-muted-foreground mt-1">
               {pendingInvoices} facturas pendientes
@@ -186,49 +150,7 @@ export default function Dashboard() {
         </Card>
       </div>
 
-      {/* Progreso de cobros */}
-      <Card className="mb-8">
-        <CardHeader>
-          <CardTitle>Tasa de cobro</CardTitle>
-          <CardDescription>
-            Porcentaje de facturación cobrada sobre el total facturado
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {isLoading ? (
-            <Skeleton className="h-4 w-full mb-2" />
-          ) : (
-            <>
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-sm font-medium">Progreso</span>
-                <span className="text-sm font-medium">{collectionRate}%</span>
-              </div>
-              <Progress value={collectionRate} className="h-2" />
-            </>
-          )}
-          
-          <div className="grid grid-cols-2 gap-4 mt-6">
-            <div className="flex flex-col">
-              <span className="text-sm text-muted-foreground">Total facturado</span>
-              {isLoading ? (
-                <Skeleton className="h-6 w-28 mt-1" />
-              ) : (
-                <span className="text-lg font-bold">{formatCurrency(totalInvoiceAmount)}</span>
-              )}
-            </div>
-            <div className="flex flex-col">
-              <span className="text-sm text-muted-foreground">Total cobrado</span>
-              {isLoading ? (
-                <Skeleton className="h-6 w-28 mt-1" />
-              ) : (
-                <span className="text-lg font-bold">{formatCurrency(totalRevenue)}</span>
-              )}
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      <div className="grid gap-6 md:grid-cols-2 mb-8">
+      <div className="grid gap-6 md:grid-cols-1 mb-8">
         {/* Facturas recientes */}
         <Card className="col-span-1">
           <CardHeader>
@@ -304,78 +226,6 @@ export default function Dashboard() {
             </Link>
           </CardFooter>
         </Card>
-
-        {/* Pagos recientes */}
-        <Card className="col-span-1">
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <CardTitle>Cobros recientes</CardTitle>
-              <Link href="/pages/dashboard/payments">
-                <Button variant="ghost" size="sm" className="gap-1">
-                  Ver todos <ChevronRight className="h-4 w-4" />
-                </Button>
-              </Link>
-            </div>
-          </CardHeader>
-          <CardContent>
-            {isLoading ? (
-              <div className="space-y-4">
-                {[...Array(3)].map((_, i) => (
-                  <div key={i} className="flex items-center gap-4">
-                    <Skeleton className="h-12 w-12 rounded-full" />
-                    <div className="space-y-2">
-                      <Skeleton className="h-4 w-40" />
-                      <Skeleton className="h-4 w-24" />
-                    </div>
-                    <div className="ml-auto">
-                      <Skeleton className="h-8 w-20" />
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : recentPayments.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-8 text-center text-muted-foreground">
-                <CreditCard className="h-12 w-12 mb-2 opacity-20" />
-                <p>No hay cobros recientes</p>
-              </div>
-            ) : (
-              <div className="space-y-4">
-                {recentPayments.map((payment) => {
-                  const invoice = invoices.find(i => i.id === payment.invoice_id);
-                  return (
-                    <div key={payment.id} className="flex items-center justify-between">
-                      <div className="flex items-center gap-4">
-                        <div className="h-10 w-10 rounded-full bg-green-100 flex items-center justify-center">
-                          <CreditCard className="h-5 w-5 text-green-600" />
-                        </div>
-                        <div>
-                          <p className="text-sm font-medium">
-                            {invoice ? invoice.invoice_number : `Pago #${payment.id.slice(0, 8)}`}
-                          </p>
-                          <p className="text-xs text-muted-foreground">{payment.payment_method}</p>
-                        </div>
-                      </div>
-                      <div className="text-right">
-                        <p className="text-sm font-medium">{formatCurrency(payment.amount)}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {new Date(payment.created_at).toLocaleDateString()}
-                        </p>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </CardContent>
-          <CardFooter className="border-t px-6 py-4">
-            <Link href="/pages/dashboard/payments" className="w-full">
-              <Button variant="outline" className="w-full">
-                <CreditCard className="mr-2 h-4 w-4" />
-                Gestionar pagos
-              </Button>
-            </Link>
-          </CardFooter>
-        </Card>
       </div>
 
       {/* Accesos rápidos */}
@@ -387,7 +237,7 @@ export default function Dashboard() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
             <Link href="/pages/dashboard/clients">
               <Card className="cursor-pointer hover:bg-accent/10 transition-colors">
                 <CardContent className="p-4 flex flex-col items-center text-center">
@@ -419,18 +269,6 @@ export default function Dashboard() {
                   <h3 className="font-medium">Facturas</h3>
                   <p className="text-sm text-muted-foreground">
                     Crear y gestionar facturas
-                  </p>
-                </CardContent>
-              </Card>
-            </Link>
-            
-            <Link href="/pages/dashboard/invoice-series">
-              <Card className="cursor-pointer hover:bg-accent/10 transition-colors">
-                <CardContent className="p-4 flex flex-col items-center text-center">
-                  <BarChart2 className="h-6 w-6 mb-3 text-amber-500" />
-                  <h3 className="font-medium">Series</h3>
-                  <p className="text-sm text-muted-foreground">
-                    Configurar series de facturación
                   </p>
                 </CardContent>
               </Card>
