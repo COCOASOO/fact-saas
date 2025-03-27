@@ -17,7 +17,7 @@ import {
   deleteInvoiceSeries,
   checkSeriesHasInvoices,
   updateInvoiceSeries,
-} from "@/app/routes/invoice_series/route";
+} from "@/app/utils/invoice_series";
 import { InvoiceSeriesDialog } from "@/components/forms/InvoiceSeriesDialog";
 import { Toaster, toast } from "sonner";
 import {

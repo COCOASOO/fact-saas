@@ -30,7 +30,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { getInvoiceSeries } from "@/app/routes/invoice_series/route"
+import { getInvoiceSeries, getNextInvoiceNumber } from "@/app/utils/invoice_series"
 import type { InvoiceSeries } from "@/app/types/invoice-series"
 import { InvoicePopupManager } from "@/components/invoicePDF/InvoicePopupManager"
 import { Skeleton } from "@/components/ui/skeleton"

@@ -1,6 +1,6 @@
 import { createClient } from "@/lib/supabase/supabaseClient";
 import { AppRouterInstance } from "next/dist/shared/lib/app-router-context.shared-runtime";
-import { CreateCompanyDTO } from "../routes/companies/route";
+import { CreateCompanyDTO } from "@/app/utils/companies";
 
 // Move the signUp function here
 export async function signUp(

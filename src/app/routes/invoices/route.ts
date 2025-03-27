@@ -1,7 +1,6 @@
 import { createClient } from "@/lib/supabase/supabaseClient"
 import type { Invoice, InvoiceStatus } from "@/app/types/invoice"
-import { getNextInvoiceNumber, updateSeriesInvoiceCount } from "../invoice_series/route";
-
+import { getNextInvoiceNumber, updateSeriesInvoiceCount } from "@/app/utils/invoice_series";
 const supabase = createClient()
 
 async function getCurrentUserId() {
