@@ -126,4 +126,15 @@ export async function signIn(
   } finally {
     setIsLoggingIn(false);
   }
+}
+
+export async function getCurrentUserId() {
+  const supabase = createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  
+  if (!user) {
+    throw new Error('No hay usuario autenticado');
+  }
+  
+  return user.id;
 } 
