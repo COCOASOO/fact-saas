@@ -1,8 +1,8 @@
 "use client";
 
 import { useAuth } from "@/app/contexts/authContext";
-import { getCompanies, type Company } from "@/app/routes/companies/route";
-import { getClients, type Client } from "@/app/routes/clients/route";
+import { getCompanies, type Company } from "@/app/utils/companies";
+import { getClients, type Client } from "@/app/utils/clients";
 import { getPayments, type Payment } from "@/app/routes/payments/route";
 import { getInvoices} from "@/app/routes/invoices/route";
 import { type Invoice } from "@/app/types/invoice";

@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { Company, getUserCompany, updateCompany, addCompany } from "@/app/routes/companies/route";
+import { Company, getUserCompany, updateCompany, addCompany } from "@/app/utils/companies";
 import { toast, Toaster } from "sonner";
 
 // Importaciones de componentes Shadcn

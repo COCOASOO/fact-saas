@@ -153,3 +153,27 @@ export async function deleteCompany(id: string) {
     throw error;
   }
 }
+
+export async function getUserCompany() {
+  try {
+    const userId = await getCurrentUserId();
+
+    const { data, error } = await supabase
+      .from("companies")
+      .select("*")
+      .eq("user_id", userId)
+      .single();
+
+    if (error) {
+      if (error.code === "PGRST116") {
+        // No company found
+        return null;
+      }
+      throw error;
+    }
+
+    return data as Company;
+  } catch (error) {
+    throw error;
+  }
+}

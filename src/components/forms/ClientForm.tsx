@@ -18,8 +18,8 @@ import {
   getCompanies,
   getCompanyById,
   getUserCompany,
-} from "@/app/routes/companies/route";
-import type { Company } from "@/app/routes/companies/route";
+} from "@/app/utils/companies";
+import type { Company } from "@/app/utils/companies";
 
 interface Client {
   id: string;
@@ -87,7 +87,7 @@ export function ClientForm({
     const loadCompany = async () => {
       try {
         const companiesData = await getUserCompany();
-        setCompany(companiesData);
+        setCompany(companiesData || undefined); // Ensure company state is set to undefined if companiesData is null
   
         setFormData((prev) => ({
           ...prev,

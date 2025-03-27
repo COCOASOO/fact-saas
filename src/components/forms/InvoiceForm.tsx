@@ -19,9 +19,9 @@ import {
   calculateIrpfAmount,
   calculateTotalAmount,
 } from "@/app/utils/invoice-calculations";
-import { getClientById, getClients } from "@/app/routes/clients/route";
+import { getClients, getClientById } from "@/app/utils/clients";
 import { Client } from "@/app/types/client";
-import { Company, getUserCompany } from "@/app/routes/companies/route";
+import { Company, getUserCompany } from "@/app/utils/companies";
 import { getInvoiceSeries } from '@/app/routes/invoice_series/route';
 import { InvoiceSeries } from '@/app/types/invoice-series';
 import { generateInvoiceNumber } from "@/app/routes/invoices/route";
@@ -87,10 +87,10 @@ export function InvoiceForm({
     const loadCompany = async () => {
       try {
         const companyData = await getUserCompany();
-        setCompany(companyData);
+        setCompany(companyData || undefined); // Ensure company is set to undefined if null
         setFormData((prev) => ({
           ...prev,
-          company_id: companyData?.id || prev.company_id,
+          company_id: companyData?.id ?? prev.company_id, // Use nullish coalescing operator
         }));
       } catch (error) {
         console.error("Error loading companies:", error);

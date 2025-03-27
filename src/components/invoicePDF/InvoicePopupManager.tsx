@@ -11,8 +11,8 @@ import {
   updateInvoice,
   getInvoiceById,
 } from "@/app/routes/invoices/route";
-import { getClientById } from "@/app/routes/clients/route";
-import { getUserCompany } from "@/app/routes/companies/route";
+import { getClientById } from "@/app/utils/clients";
+import { getUserCompany } from "@/app/utils/companies";
 import { toast } from "sonner";
 import html2pdf from "html2pdf.js";
 import { PDFGenerator } from "@/components/invoicePDF/pdfService";
