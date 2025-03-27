@@ -1,112 +1,65 @@
-import { createClient } from "@/lib/supabase/supabaseClient"
+import { NextRequest, NextResponse } from "next/server";
+import { createClient } from "@/lib/supabase/supabaseClient";
+import { addClient, getClientById, getClients, updateClient, deleteClient } from "@/app/utils/clients";
 
-export interface Client {
-    id: string
-    company_id: string
-    user_id: string
-    name: string
-    nif: string
-    address?: string
-    city?: string
-    postcode?: string
-    country: string
-    email?: string
-    phone?: string
-    applies_irpf: boolean
-    created_at?: string
+const supabase = createClient();
+
+export async function GET(request: NextRequest) {
+  try {
+    const { searchParams } = new URL(request.url);
+    const id = searchParams.get('id');
+
+    if (id) {
+      const client = await getClientById(id);
+      return NextResponse.json(client);
+    } else {
+      const clients = await getClients();
+      return NextResponse.json(clients);
+    }
+  } catch (error) {
+    return NextResponse.json({ error: (error as Error).message }, { status: 500 });
+  }
 }
 
-export interface CreateClientDTO {
-    company_id: string
-    name: string
-    nif: string
-    address?: string
-    city?: string
-    postcode?: string
-    country?: string
-    email?: string
-    phone?: string
-    applies_irpf?: boolean
+export async function POST(request: NextRequest) {
+  try {
+    const data = await request.json();
+    const client = await addClient(data);
+    return NextResponse.json(client);
+  } catch (error) {
+    return NextResponse.json({ error: (error as Error).message }, { status: 500 });
+  }
 }
 
-export interface UpdateClientDTO extends Partial<CreateClientDTO> {}
-
-const supabase = createClient()
-
-export async function getClients() {
-    const { data: clients, error } = await supabase
-        .from('clients')
-        .select('*')
-        .eq('user_id', (await supabase.auth.getUser()).data.user?.id)
-
-    if (error) throw error
-    return clients as Client[]
-}
-
-export async function getClientById(id: string) {
-    const { data: { user } } = await supabase.auth.getUser();
+export async function PUT(request: NextRequest) {
+  try {
+    const { searchParams } = new URL(request.url);
+    const id = searchParams.get('id');
     
-    if (!user) throw new Error('No authenticated user');
-
-    const { data: client, error } = await supabase
-        .from('clients')
-        .select('*')
-        .eq('id', id)
-        .eq('user_id', user.id)
-        .single();
-
-    if (error) throw error;
-    return client;
-}
-
-export async function addClient(client: CreateClientDTO) {
-    const { data, error } = await supabase
-        .from('clients')
-        .insert([
-            {
-                ...client,
-                user_id: (await supabase.auth.getUser()).data.user?.id,
-                country: client.country || 'ESP',
-                applies_irpf: client.applies_irpf ?? false
-            }
-        ])
-        .select()
-        .single()
-
-    if (error) {
-        if (error.code === '23505') {
-            throw new Error('Ya existe un cliente con este NIF')
-        }
-        throw error
+    if (!id) {
+      return NextResponse.json({ error: 'ID is required' }, { status: 400 });
     }
-    return data as Client
+    
+    const data = await request.json();
+    const client = await updateClient(id, data);
+    return NextResponse.json(client);
+  } catch (error) {
+    return NextResponse.json({ error: (error as Error).message }, { status: 500 });
+  }
 }
 
-export async function updateClient(id: string, client: UpdateClientDTO) {
-    const { data, error } = await supabase
-        .from('clients')
-        .update(client)
-        .eq('id', id)
-        .eq('user_id', (await supabase.auth.getUser()).data.user?.id)
-        .select()
-        .single()
-
-    if (error) {
-        if (error.code === '23505') {
-            throw new Error('Ya existe un cliente con este NIF')
-        }
-        throw error
+export async function DELETE(request: NextRequest) {
+  try {
+    const { searchParams } = new URL(request.url);
+    const id = searchParams.get('id');
+    
+    if (!id) {
+      return NextResponse.json({ error: 'ID is required' }, { status: 400 });
     }
-    return data as Client
-}
-
-export async function deleteClient(id: string) {
-    const { error } = await supabase
-        .from('clients')
-        .delete()
-        .eq('id', id)
-        .eq('user_id', (await supabase.auth.getUser()).data.user?.id)
-
-    if (error) throw error
-    return true
+    
+    await deleteClient(id);
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    return NextResponse.json({ error: (error as Error).message }, { status: 500 });
+  }
 } 
