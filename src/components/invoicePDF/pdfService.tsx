@@ -1,12 +1,20 @@
-import html2pdf from 'html2pdf.js';
 import { Invoice } from '@/app/types/invoice';
 import { toast } from 'sonner';
 import { uploadPDF } from '@/lib/supabase/storageService';
 import { updateInvoice } from '@/app/utils/invoices';
 import { createClient } from '@/lib/supabase/supabaseClient';
+import React from 'react';
+
+// Importamos html2pdf dinámicamente solo en el cliente
+let html2pdf: any;
+if (typeof window !== 'undefined') {
+  import('html2pdf.js').then(module => {
+    html2pdf = module.default;
+  });
+}
 
 // Clase para gestionar la generación de PDFs
-export class PDFGenerator {
+class PDFGeneratorClass {
   /**
    * Método para generar un PDF a partir de un elemento HTML
    * Este método es usado tanto por generateAndStore como directamente por InvoicePopupManager
@@ -14,6 +22,14 @@ export class PDFGenerator {
   static async generatePDF(element: HTMLElement, options = {}): Promise<Blob> {
     if (!element) {
       throw new Error('No se ha proporcionado un elemento válido');
+    }
+    
+    if (typeof window === 'undefined') {
+      throw new Error('Este método solo puede ser ejecutado en el navegador');
+    }
+
+    if (!html2pdf) {
+      throw new Error('html2pdf no está disponible');
     }
     
     console.log('Iniciando generación de PDF a partir del elemento');
@@ -248,3 +264,15 @@ export class PDFGenerator {
     }
   }
 }
+
+// Componente React que expone la funcionalidad de PDFGenerator
+export function PDFGenerator() {
+  return null; // Este componente no renderiza nada
+}
+
+// Asignar los métodos estáticos al componente
+Object.assign(PDFGenerator, PDFGeneratorClass);
+
+// Exportar la clase original como default y nombrada
+export { PDFGeneratorClass };
+export default PDFGeneratorClass;

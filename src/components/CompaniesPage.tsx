@@ -15,8 +15,8 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog"
 import { CompanyForm } from "@/components/forms/CompanyForm"
-import { getCompanies, addCompany, updateCompany, deleteCompany } from "@/app/routes/companies/route"
-import { Company, CreateCompanyDTO, UpdateCompanyDTO } from "@/app/routes/companies/route"
+import { getCompanies, addCompany, updateCompany, deleteCompany, CreateCompanyDTO, UpdateCompanyDTO } from "@/app/utils/companies"
+import { Company  } from "@/app/types/company"
 
 export default function CompaniesPage() {
   const [companies, setCompanies] = useState<Company[]>([])
@@ -49,12 +49,12 @@ export default function CompaniesPage() {
       const companyData: CreateCompanyDTO = {
         name: newCompany.name,
         nif: newCompany.nif,
-        address: newCompany.address,
-        city: newCompany.city,
-        postcode: newCompany.postcode,
+        address: newCompany.address ?? undefined,
+        city: newCompany.city ?? undefined,
+        postcode: newCompany.postcode ?? undefined,
         country: newCompany.country,
-        email: newCompany.email,
-        phone: newCompany.phone
+        email: newCompany.email ?? undefined,
+        phone: newCompany.phone ?? undefined
       }
       await addCompany(companyData)
       await loadCompanies()
@@ -69,12 +69,12 @@ export default function CompaniesPage() {
       const companyData: UpdateCompanyDTO = {
         name: updatedCompany.name,
         nif: updatedCompany.nif,
-        address: updatedCompany.address,
-        city: updatedCompany.city,
-        postcode: updatedCompany.postcode,
+        address: updatedCompany.address ?? undefined,
+        city: updatedCompany.city ?? undefined,
+        postcode: updatedCompany.postcode ?? undefined,
         country: updatedCompany.country,
-        email: updatedCompany.email,
-        phone: updatedCompany.phone
+        email: updatedCompany.email ?? undefined,
+        phone: updatedCompany.phone ?? undefined
       }
       await updateCompany(updatedCompany.id, companyData)
       await loadCompanies()
@@ -238,7 +238,14 @@ export default function CompaniesPage() {
           </DialogHeader>
           {currentCompany && (
             <CompanyForm
-              company={currentCompany}
+              company={{
+                ...currentCompany,
+                address: currentCompany.address ?? "",
+                city: currentCompany.city ?? "",
+                postcode: currentCompany.postcode ?? "",
+                email: currentCompany.email ?? "",
+                phone: currentCompany.phone ?? ""
+              }}
               onSubmit={handleEditCompany}
               onCancel={() => setIsEditDialogOpen(false)}
             />

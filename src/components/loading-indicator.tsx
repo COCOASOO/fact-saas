@@ -1,11 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, Suspense } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
 import { Progress } from "@/components/ui/progress";
 import { cn } from "@/app/utils/utils";
 
-export function LoadingIndicator() {
+function LoadingIndicatorContent() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const [isLoading, setIsLoading] = useState(false);
@@ -44,5 +44,13 @@ export function LoadingIndicator() {
     >
       <Progress value={progress} className="h-1 w-full rounded-none" />
     </div>
+  );
+}
+
+export function LoadingIndicator() {
+  return (
+    <Suspense fallback={null}>
+      <LoadingIndicatorContent />
+    </Suspense>
   );
 }

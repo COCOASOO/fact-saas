@@ -33,7 +33,7 @@ import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
 import { formatCurrency } from "@/app/utils/invoice-calculations";
 
-export default function Dashboard() {
+function DashboardContent() {
   const { user } = useAuth();
   const [companies, setCompanies] = useState<Company[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
@@ -156,7 +156,7 @@ export default function Dashboard() {
           <CardHeader>
             <div className="flex items-center justify-between">
               <CardTitle>Facturas recientes</CardTitle>
-              <Link href="/pages/dashboard/invoices">
+              <Link href="/dashboard/invoices">
                 <Button variant="ghost" size="sm" className="gap-1">
                   Ver todas <ChevronRight className="h-4 w-4" />
                 </Button>
@@ -201,14 +201,17 @@ export default function Dashboard() {
                             <Calendar className="h-5 w-5 text-blue-600" />}
                         </div>
                         <div>
-                          <p className="text-sm font-medium">{invoice.invoice_number}</p>
-                          <p className="text-xs text-muted-foreground">{client?.name || 'Cliente desconocido'}</p>
+                          <p className="font-medium">{client?.name || 'Cliente no encontrado'}</p>
+                          <p className="text-sm text-muted-foreground">
+                            {new Date(invoice.invoice_date).toLocaleDateString()}
+                          </p>
                         </div>
                       </div>
                       <div className="text-right">
-                        <p className="text-sm font-medium">{formatCurrency(invoice.total_amount)}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {new Date(invoice.invoice_date).toLocaleDateString()}
+                        <p className="font-medium">{formatCurrency(invoice.total_amount)}</p>
+                        <p className="text-sm text-muted-foreground">
+                          {invoice.status === 'draft' ? 'Borrador' : 
+                           invoice.status === 'final' ? 'Finalizada' : 'En proceso'}
                         </p>
                       </div>
                     </div>
@@ -217,65 +220,12 @@ export default function Dashboard() {
               </div>
             )}
           </CardContent>
-          <CardFooter className="border-t px-6 py-4">
-            <Link href="/pages/dashboard/invoices" className="w-full">
-              <Button variant="outline" className="w-full">
-                <FileText className="mr-2 h-4 w-4" />
-                Ir a facturas
-              </Button>
-            </Link>
-          </CardFooter>
         </Card>
       </div>
-
-      {/* Accesos rápidos */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Accesos rápidos</CardTitle>
-          <CardDescription>
-            Gestiona rápidamente los aspectos clave de tu negocio
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            <Link href="/pages/dashboard/clients">
-              <Card className="cursor-pointer hover:bg-accent/10 transition-colors">
-                <CardContent className="p-4 flex flex-col items-center text-center">
-                  <Users className="h-6 w-6 mb-3 text-indigo-500" />
-                  <h3 className="font-medium">Clientes</h3>
-                  <p className="text-sm text-muted-foreground">
-                    Gestionar {clients.length} clientes
-                  </p>
-                </CardContent>
-              </Card>
-            </Link>
-            
-            <Link href="/pages/dashboard/companies">
-              <Card className="cursor-pointer hover:bg-accent/10 transition-colors">
-                <CardContent className="p-4 flex flex-col items-center text-center">
-                  <Building className="h-6 w-6 mb-3 text-emerald-500" />
-                  <h3 className="font-medium">Empresas</h3>
-                  <p className="text-sm text-muted-foreground">
-                    Gestionar {companies.length} empresas
-                  </p>
-                </CardContent>
-              </Card>
-            </Link>
-            
-            <Link href="/pages/dashboard/invoices">
-              <Card className="cursor-pointer hover:bg-accent/10 transition-colors">
-                <CardContent className="p-4 flex flex-col items-center text-center">
-                  <FileText className="h-6 w-6 mb-3 text-blue-500" />
-                  <h3 className="font-medium">Facturas</h3>
-                  <p className="text-sm text-muted-foreground">
-                    Crear y gestionar facturas
-                  </p>
-                </CardContent>
-              </Card>
-            </Link>
-          </div>
-        </CardContent>
-      </Card>
     </div>
   );
+}
+
+export default function Dashboard() {
+  return <DashboardContent />;
 }

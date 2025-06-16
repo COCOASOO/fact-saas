@@ -1,4 +1,5 @@
 export interface User {
+    phone: string;
     id: string;
     user_id: string; // ID de autenticación de Supabase
     email: string;

@@ -1,5 +1,3 @@
-"use client";
-
 import * as React from "react";
 import { Sidebar, MobileSidebar } from "@/components/sidebar";
 import { SaasNavbar } from "@/components/SaasNavbar";

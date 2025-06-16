@@ -1,5 +1,3 @@
-"use client"
-
 import { useState, useEffect, useRef } from "react"
 import { Plus, Pencil, Trash2, Search, Download, Building2, Check, CheckCircle, FileCheck, FileEdit } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -34,8 +32,8 @@ import { getInvoiceSeries, getNextInvoiceNumber } from "@/app/utils/invoice_seri
 import type { InvoiceSeries } from "@/app/types/invoice-series"
 import { InvoicePopupManager } from "@/components/invoicePDF/InvoicePopupManager"
 import { Skeleton } from "@/components/ui/skeleton"
-import { PDFGenerator } from '@/components/invoicePDF/pdfService'
 import React from "react"
+import { PDFGeneratorClass } from "@/components/invoicePDF/pdfService"
 
 const getStatusColor = (status: Invoice["status"]) => {
   switch (status) {
@@ -70,27 +68,9 @@ const getStatusIcon = (status: Invoice["status"]) => {
   }
 }
 
-async function uploadPDF(formData: FormData): Promise<string> {
-  // Esta es una implementación temporal, deberías reemplazarla
-  // con tu lógica real para subir archivos a tu storage
-  console.log("Simulando subida de PDF...");
-  
-  // Aquí iría tu código para subir el PDF a un servicio de almacenamiento
-  // Ejemplo: supabase, firebase, o tu propio servidor
-  
-  // Por ahora, simular con un timeout y devolver una URL ficticia
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      // En un entorno real, aquí devolverías la URL real del PDF subido
-      resolve(`https://tudominio.com/storage/invoices/factura-${Date.now()}.pdf`);
-    }, 1000);
-  });
-}
-
 // Función para mostrar el número de factura limpio en la UI
 const getDisplayInvoiceNumber = (invoiceNumber: string) => {
   if (invoiceNumber?.startsWith('BORRADOR-')) {
-    // Devolver un diseño apilado verticalmente para ahorrar espacio horizontal
     return (
       <div className="flex flex-col">
         <span className="text-amber-600 text-xs font-semibold bg-amber-50 px-1 rounded self-start mb-1">
@@ -172,8 +152,6 @@ export default function InvoicesPage() {
       return sortDirection === "asc" ? comparison : -comparison
     })
 
-
-
   const handleEditClick = (invoice: Invoice) => {
     setSelectedInvoiceForEdit(invoice)
     setTimeout(() => {
@@ -247,18 +225,15 @@ export default function InvoicesPage() {
       toast.loading('Descargando PDF...');
       
       if (invoice.pdf_url) {
-        await PDFGenerator.downloadFromURL(invoice);
-        toast.dismiss();
-        toast.success('PDF descargado correctamente');
-        return;
+        await PDFGeneratorClass.downloadFromURL(invoice);
+      } else {
+        toast.error('No hay PDF disponible para esta factura');
       }
-      
-      toast.dismiss();
-      toast.error('Esta factura no tiene PDF guardado. Por favor, edite la factura para generarlo.');
     } catch (error) {
-      console.error('Error al descargar el PDF:', error);
-      toast.dismiss();
+      console.error('Error al descargar PDF:', error);
       toast.error('Error al descargar el PDF');
+    } finally {
+      toast.dismiss();
     }
   };
 
@@ -679,5 +654,4 @@ export default function InvoicesPage() {
       </Dialog>
     </>
   )
-}
-
+} 

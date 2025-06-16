@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { toast, Toaster } from "sonner";
 import { useTheme } from "@/context/theme-context";
-import { getCurrentUser, User } from "@/app/routes/users/route";
+import { getCurrentUser } from "@/app/utils/users";
 import { createClient } from "@/lib/supabase/supabaseClient";
 
 // Shadcn Components

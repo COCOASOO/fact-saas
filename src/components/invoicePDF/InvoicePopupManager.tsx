@@ -14,8 +14,7 @@ import {
 import { getClientById } from "@/app/utils/clients";
 import { getUserCompany } from "@/app/utils/companies";
 import { toast } from "sonner";
-import html2pdf from "html2pdf.js";
-import { PDFGenerator } from "@/components/invoicePDF/pdfService";
+import { PDFGeneratorClass } from "@/components/invoicePDF/pdfService";
 import { createClient } from "@/lib/supabase/supabaseClient";
 
 interface InvoicePopupManagerProps {
@@ -256,7 +255,7 @@ export const InvoicePopupManager = forwardRef<
             
             try {
               console.log("Utilizando PDFGenerator para generar el PDF");
-              const pdfBlob = await PDFGenerator.generatePDF(invoiceElement as HTMLElement, {
+              const pdfBlob = await PDFGeneratorClass.generatePDF(invoiceElement as HTMLElement, {
                 filename: `${savedInvoice.invoice_number}.pdf`
               });
               
@@ -331,7 +330,7 @@ export const InvoicePopupManager = forwardRef<
 
       // Si ya hay un PDF guardado, descárgalo directamente
       if (currentInvoice?.pdf_url) {
-        await PDFGenerator.downloadFromURL(currentInvoice);
+        await PDFGeneratorClass.downloadFromURL(currentInvoice);
         toast.dismiss();
         toast.success("PDF descargado correctamente");
         return;
@@ -346,7 +345,7 @@ export const InvoicePopupManager = forwardRef<
       }
 
       // Generar y guardar el PDF
-      await PDFGenerator.generateAndStore(invoiceElement as HTMLElement, previewData);
+      await PDFGeneratorClass.generateAndStore(invoiceElement as HTMLElement, previewData);
       
       toast.dismiss();
       toast.success("PDF descargado y guardado correctamente");

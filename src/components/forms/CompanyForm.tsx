@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { DialogFooter } from "@/components/ui/dialog"
 import { Card, CardContent } from "@/components/ui/card"
-import { Company } from "@/app/routes/companies/route"
+import { Company } from "@/app/utils/companies"
 
 interface CompanyFormProps {
   company?: Company
